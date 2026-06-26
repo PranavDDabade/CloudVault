@@ -36,6 +36,8 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
   };
 
   const isImage = file.mimeType?.startsWith('image/');
+  const isVideo = file.mimeType?.startsWith('video/');
+  const isPdf = file.mimeType === 'application/pdf';
 
   return (
     <>
@@ -55,28 +57,46 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
         <div style={{
           height: '110px', borderRadius: '12px', marginBottom: '14px',
           overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: isImage ? '#000' : `linear-gradient(135deg, ${fileIcon.bg}, rgba(124,58,237,0.05))`,
+          background: `linear-gradient(135deg, ${fileIcon.bg}, rgba(124,58,237,0.05))`,
           position: 'relative',
           border: '1px solid rgba(124,58,237,0.1)',
         }}>
-          {isImage ? (
+          {/* Default Icon in the background */}
+          {(() => {
+            const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')]
+              || LucideIcons.File;
+            return (
+              <motion.div whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}>
+                <LIcon size={42} style={{ color: fileIcon.color, filter: `drop-shadow(0 4px 12px ${fileIcon.color}40)` }} />
+              </motion.div>
+            );
+          })()}
+
+          {/* Absolute overlay preview elements */}
+          {isImage && (
             <img
               src={file.url}
               alt={file.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               loading="lazy"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
-          ) : (
-            (() => {
-              const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')]
-                || LucideIcons.File;
-              return (
-                <motion.div whileHover={{ scale: 1.1, rotate: 5 }} transition={{ duration: 0.2 }}>
-                  <LIcon size={42} style={{ color: fileIcon.color, filter: `drop-shadow(0 4px 12px ${fileIcon.color}40)` }} />
-                </motion.div>
-              );
-            })()
+          )}
+          {isVideo && (
+            <video
+              src={file.url}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              muted
+              preload="metadata"
+              onError={(e) => { e.target.style.display = 'none'; }}
+            />
+          )}
+          {isPdf && (
+            <iframe
+              src={`${file.url}#toolbar=0&navpanes=0&scrollbar=0`}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
+              scrolling="no"
+            />
           )}
 
           {/* Favorite star */}
