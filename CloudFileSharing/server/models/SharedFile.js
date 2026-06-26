@@ -98,8 +98,8 @@ sharedFileSchema.virtual('isExpired').get(function () {
 sharedFileSchema.pre('save', function (next) {
   if (!this.linkToken) {
     this.linkToken = crypto.randomBytes(20).toString('hex');
-    this.publicLink = `${process.env.CLIENT_URL}/#/share/${this.linkToken}`;
   }
+  this.publicLink = `${process.env.CLIENT_URL}/#/share/${this.linkToken}`;
   next();
 });
 

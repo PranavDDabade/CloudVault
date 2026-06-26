@@ -38,8 +38,8 @@ api.interceptors.response.use(
       localStorage.removeItem('cloudvault_token');
       delete api.defaults.headers.common['Authorization'];
       // Only redirect if not already on auth page
-      if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
-        window.location.href = '/login';
+      if (!window.location.hash.startsWith('#/login') && !window.location.hash.startsWith('#/register')) {
+        window.location.href = '/#/login';
       }
     } else if (error.response?.status === 403) {
       toast.error('You do not have permission to perform this action.');

@@ -94,6 +94,12 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Redirect legacy share links without hash to the new HashRouter format
+app.get('/share/:token', (req, res) => {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  res.redirect(`${clientUrl}/#/share/${req.params.token}`);
+});
+
 // 404 Handler
 app.use('*', (req, res) => {
   res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
@@ -109,6 +115,21 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 5000,
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+
+    // Migrate existing share links to HashRouter format
+    const SharedFile = require('./models/SharedFile');
+    const shares = await SharedFile.find({ publicLink: { $not: /#\/share/ } });
+    let updatedCount = 0;
+    for (const share of shares) {
+      if (share.linkToken) {
+        share.publicLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/#/share/${share.linkToken}`;
+        await share.save();
+        updatedCount++;
+      }
+    }
+    if (updatedCount > 0) {
+      console.log(`✅ Migrated ${updatedCount} old share links to HashRouter format.`);
+    }
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
     process.exit(1);

@@ -54,7 +54,7 @@ const getBaseEmailTemplate = (content) => `
 `;
 
 const sendVerificationEmail = async (user, token) => {
-  const verifyUrl = `${process.env.CLIENT_URL}/verify-email/${token}`;
+  const verifyUrl = `${process.env.CLIENT_URL}/#/verify-email/${token}`;
   await sendEmail({
     to: user.email,
     subject: 'Verify your CloudVault email address',
@@ -73,7 +73,7 @@ const sendVerificationEmail = async (user, token) => {
 };
 
 const sendPasswordResetEmail = async (user, token) => {
-  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${token}`;
+  const resetUrl = `${process.env.CLIENT_URL}/#/reset-password/${token}`;
   await sendEmail({
     to: user.email,
     subject: 'Reset your CloudVault password',
