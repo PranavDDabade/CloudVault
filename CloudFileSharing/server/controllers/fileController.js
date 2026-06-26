@@ -147,7 +147,7 @@ exports.downloadFile = async (req, res, next) => {
     const file = await File.findOne({ _id: req.params.id, owner: req.user._id });
     if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
 
-    const signedUrl = await getSignedDownloadUrl(file.key, 300); // 5 min expiry
+    const signedUrl = await getSignedDownloadUrl(file.key, 300, file.name); // 5 min expiry
 
     file.downloadCount += 1;
     await file.save();

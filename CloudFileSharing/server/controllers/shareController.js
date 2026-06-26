@@ -117,7 +117,7 @@ exports.downloadViaShare = async (req, res, next) => {
       if (!isMatch) return res.status(401).json({ success: false, message: 'Incorrect password.' });
     }
 
-    const signedUrl = await getSignedDownloadUrl(share.file.key, 300);
+    const signedUrl = await getSignedDownloadUrl(share.file.key, 300, share.file.name);
 
     share.downloadCount += 1;
     await share.save();

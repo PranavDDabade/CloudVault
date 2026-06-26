@@ -31,11 +31,16 @@ const uploadToS3 = async ({ buffer, key, mimetype, metadata = {} }) => {
 /**
  * Generate a pre-signed download URL (expires in 1 hour by default)
  */
-const getSignedDownloadUrl = async (key, expiresIn = 3600) => {
-  const command = new GetObjectCommand({
+const getSignedDownloadUrl = async (key, expiresIn = 3600, originalName = null) => {
+  const params = {
     Bucket: S3_BUCKET,
     Key: key,
-  });
+  };
+  if (originalName) {
+    const safeName = encodeURIComponent(originalName).replace(/['()]/g, escape);
+    params.ResponseContentDisposition = `attachment; filename="${originalName.replace(/"/g, '\\"')}"; filename*=UTF-8''${safeName}`;
+  }
+  const command = new GetObjectCommand(params);
   return getSignedUrl(s3Client, command, { expiresIn });
 };
 
