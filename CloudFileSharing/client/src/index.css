@@ -1,0 +1,10 @@
+/* Root index.css — minimal reset only. Design system lives in styles/index.css */
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
