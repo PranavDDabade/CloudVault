@@ -21,13 +21,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: '#1E293B',
-                  color: '#F8FAFC',
-                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'var(--surface)',
+                  color: 'var(--text)',
+                  border: '1px solid var(--border)',
                   borderRadius: '12px',
                   fontSize: '14px',
                   padding: '12px 16px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                  boxShadow: 'var(--shadow-md)',
                 },
                 success: {
                   iconTheme: { primary: '#10B981', secondary: '#fff' },

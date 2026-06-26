@@ -3,17 +3,22 @@ const router = express.Router();
 const {
   uploadFiles, getFiles, getFile, downloadFile, updateFile,
   deleteFile, restoreFile, permanentDelete, getTrash, toggleFavorite,
-  duplicateFile, getRecentFiles, emptyTrash
+  duplicateFile, getRecentFiles, emptyTrash, getStats
 } = require('../controllers/fileController');
 const { protect } = require('../middlewares/auth');
 const { upload, handleMulterError } = require('../middlewares/upload');
 
 router.use(protect);
 
+// ── Analytics (before /:id wildcard) ──────────────────────────────────────────
+router.get('/stats', getStats);
+
+// ── Special named routes ───────────────────────────────────────────────────────
 router.get('/recent', getRecentFiles);
 router.get('/trash', getTrash);
 router.delete('/trash/empty', emptyTrash);
 
+// ── CRUD ───────────────────────────────────────────────────────────────────────
 router
   .route('/')
   .get(getFiles)

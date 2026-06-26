@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Files, HardDrive, Share2, Clock, Upload, FolderPlus, Star, TrendingUp
+  Files, HardDrive, Share2, Clock, Upload, FolderPlus, Star, TrendingUp, Folder
 } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import { fileService } from '../services/fileService';
+import { folderService } from '../services/folderService';
 import api from '../services/api';
 import StatsCard from '../components/dashboard/StatsCard';
 import { StoragePieChart, UploadTrendChart } from '../components/dashboard/StorageChart';
 import { SkeletonCard } from '../components/ui/index.jsx';
 import FileCard from '../components/files/FileCard';
+import FolderCard from '../components/files/FolderCard';
 import FilePreview from '../components/files/FilePreview';
 import ShareModal from '../components/sharing/ShareModal';
+import Modal from '../components/ui/Modal';
 import { formatBytes, formatDate } from '../utils/formatters';
+import toast from 'react-hot-toast';
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -28,34 +33,62 @@ const Dashboard = () => {
   const { openUpload } = useOutletContext() || {};
   const [stats, setStats] = useState(null);
   const [recentFiles, setRecentFiles] = useState([]);
+  const [recentFolders, setRecentFolders] = useState([]);
   const [storageStats, setStorageStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [previewFile, setPreviewFile] = useState(null);
   const [shareFile, setShareFile] = useState(null);
+  
+  // Dashboard Rename Modal support
+  const [renameItem, setRenameItem] = useState(null);
+  const [newName, setNewName] = useState('');
+
+  const load = async () => {
+    try {
+      const [recentRes, storageRes, recentFoldersRes] = await Promise.all([
+        fileService.getRecentFiles(),
+        api.get('/users/storage-stats'),
+        folderService.getFolders({ limit: 4, sort: '-createdAt' }),
+      ]);
+      setRecentFiles(recentRes.data.files || []);
+      setRecentFolders(recentFoldersRes.data.folders || []);
+      setStorageStats(storageRes.data.stats);
+      setStats({
+        totalFiles: storageRes.data.stats.totalFiles,
+        storageUsed: user?.storageUsed || 0,
+        storageLimit: user?.storageLimit || 1,
+        trashFiles: storageRes.data.stats.trashFiles,
+        totalFolders: storageRes.data.stats.totalFolders || 0,
+        trashFolders: storageRes.data.stats.trashFolders || 0,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [recentRes, storageRes] = await Promise.all([
-          fileService.getRecentFiles(),
-          api.get('/users/storage-stats'),
-        ]);
-        setRecentFiles(recentRes.data.files || []);
-        setStorageStats(storageRes.data.stats);
-        setStats({
-          totalFiles: storageRes.data.stats.totalFiles,
-          storageUsed: user?.storageUsed || 0,
-          storageLimit: user?.storageLimit || 1,
-          trashFiles: storageRes.data.stats.trashFiles,
-        });
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
   }, [user]);
+
+  const handleRenameSubmit = async () => {
+    if (!newName.trim() || !renameItem) return;
+    try {
+      if (renameItem.isFolder) {
+        await folderService.updateFolder(renameItem._id, { name: newName });
+        setRecentFolders(prev => prev.map(f => f._id === renameItem._id ? { ...f, name: newName } : f));
+      } else {
+        await fileService.updateFile(renameItem._id, { name: newName });
+        setRecentFiles(prev => prev.map(f => f._id === renameItem._id ? { ...f, name: newName } : f));
+      }
+      setRenameItem(null);
+      setNewName('');
+      toast.success('Renamed successfully');
+    } catch {
+      toast.error('Rename failed');
+    }
+  };
 
   const storagePercent = stats
     ? Math.round((stats.storageUsed / stats.storageLimit) * 100)
@@ -70,6 +103,13 @@ const Dashboard = () => {
       gradient: 'linear-gradient(135deg, #7C3AED, #6366F1)',
     },
     {
+      title: 'Total Folders',
+      value: stats?.totalFolders ?? '–',
+      subtitle: 'Active folders',
+      icon: Folder,
+      gradient: 'linear-gradient(135deg, #EC4899, #8B5CF6)',
+    },
+    {
       title: 'Storage Used',
       value: formatBytes(stats?.storageUsed || 0),
       subtitle: `${storagePercent}% of ${formatBytes(stats?.storageLimit || 0)}`,
@@ -78,17 +118,10 @@ const Dashboard = () => {
     },
     {
       title: 'In Trash',
-      value: stats?.trashFiles ?? '–',
-      subtitle: 'Will auto-delete in 30 days',
+      value: (stats?.trashFiles ?? 0) + (stats?.trashFolders ?? 0),
+      subtitle: 'Files and folders',
       icon: Clock,
-      gradient: 'linear-gradient(135deg, #EF4444, #EC4899)',
-    },
-    {
-      title: 'Recent Uploads',
-      value: recentFiles.length,
-      subtitle: 'Last 10 files',
-      icon: TrendingUp,
-      gradient: 'linear-gradient(135deg, #10B981, #2DD4BF)',
+      gradient: 'linear-gradient(135deg, #EF4444, #F59E0B)',
     },
   ];
 
@@ -184,6 +217,44 @@ const Dashboard = () => {
         </motion.div>
       </div>
 
+      {/* Recent Folders */}
+      {recentFolders.length > 0 && (
+        <motion.div
+          className="card"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35, duration: 0.5 }}
+          style={{ marginBottom: 'var(--gap-lg)' }}
+        >
+          <h2 style={{
+            fontSize: '16px', fontWeight: 600, color: 'var(--text)', marginBottom: '24px',
+          }}>
+            Recent Folders
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>
+            {recentFolders.map((folder) => (
+              <FolderCard
+                key={folder._id}
+                folder={folder}
+                onOpen={(id) => navigate('/dashboard/files')}
+                onDelete={async (id) => {
+                  await folderService.deleteFolder(id);
+                  setRecentFolders(prev => prev.filter(f => f._id !== id));
+                }}
+                onRename={(f) => {
+                  setRenameItem({ ...f, isFolder: true });
+                  setNewName(f.name);
+                }}
+                onToggleFavorite={async (id, isFavorite) => {
+                  await folderService.updateFolder(id, { isFavorite });
+                  setRecentFolders(prev => prev.map(f => f._id === id ? { ...f, isFavorite } : f));
+                }}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Recent Files */}
       {recentFiles.length > 0 && (
         <motion.div
@@ -212,11 +283,33 @@ const Dashboard = () => {
                   await fileService.deleteFile(id);
                   setRecentFiles(prev => prev.filter(f => f._id !== id));
                 }}
+                onRename={(f) => {
+                  setRenameItem(f);
+                  setNewName(f.name);
+                }}
               />
             ))}
           </div>
         </motion.div>
       )}
+
+      {/* Rename Modal */}
+      <Modal isOpen={!!renameItem} onClose={() => setRenameItem(null)} title={renameItem?.isFolder ? "Rename Folder" : "Rename File"} size="sm">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="input"
+            onKeyDown={(e) => e.key === 'Enter' && handleRenameSubmit()}
+            placeholder="Name"
+            autoFocus
+          />
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" onClick={() => setRenameItem(null)}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleRenameSubmit} style={{ height: '40px', borderRadius: 'var(--radius-button)' }}>Rename</button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Modals */}
       <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}

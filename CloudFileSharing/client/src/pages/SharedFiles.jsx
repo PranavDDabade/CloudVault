@@ -84,7 +84,7 @@ const SharedFiles = () => {
               border: 'none',
               transition: 'all 0.2s',
               background: tab === id ? 'var(--surface)' : 'transparent',
-              color: tab === id ? '#FFFFFF' : 'var(--text-secondary)',
+              color: tab === id ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}
           >
             {label}
@@ -99,10 +99,18 @@ const SharedFiles = () => {
       ) : (
         <div className="table-container">
           {currentList.map((share, idx) => {
-            const file = share.file;
-            if (!file) return null;
-            const fileIcon = getFileIcon(file);
-            const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File;
+            const isFolder = !!share.folder;
+            const item = isFolder ? share.folder : share.file;
+            if (!item) return null;
+            
+            const fileIcon = isFolder
+              ? { bg: 'rgba(124, 92, 255, 0.1)', color: item.color || 'var(--primary)' }
+              : getFileIcon(item);
+              
+            const LIcon = isFolder
+              ? LucideIcons.Folder
+              : (LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File);
+
             return (
               <motion.div
                 key={share._id}
@@ -116,10 +124,10 @@ const SharedFiles = () => {
                 </div>
                 <div style={{ flex: 1, minWidth: 0, marginLeft: '16px' }}>
                   <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px' }}>
-                    {file.name}
+                    {item.name}
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    {formatBytes(file.size)}
+                    {isFolder ? 'Folder' : formatBytes(item.size)}
                     {tab === 'with-me' && share.sharedBy && ` · From ${share.sharedBy.name}`}
                     {share.expiresAt && ` · Expires ${formatShortDate(share.expiresAt)}`}
                   </p>
@@ -147,8 +155,12 @@ const SharedFiles = () => {
                     </>
                   )}
                   {tab === 'with-me' && (
-                    <button onClick={() => setPreviewFile(file)} className="btn btn-secondary btn-sm" style={{ height: '36px', fontSize: '13px', borderRadius: 'var(--radius-button)' }}>
-                      <Eye size={14} /> View File
+                    <button 
+                      onClick={() => isFolder ? toast.success('Open the link in your browser to view this folder!') : setPreviewFile(item)} 
+                      className="btn btn-secondary btn-sm" 
+                      style={{ height: '36px', fontSize: '13px', borderRadius: 'var(--radius-button)' }}
+                    >
+                      <Eye size={14} /> {isFolder ? 'View Folder' : 'View File'}
                     </button>
                   )}
                 </div>

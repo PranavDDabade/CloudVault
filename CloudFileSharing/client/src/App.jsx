@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { useAuth } from './context/AuthContext';
 import { PageLoader } from './components/ui/index.jsx';
+import ErrorBoundary from './components/ui/ErrorBoundary';
 import DashboardLayout from './components/layout/DashboardLayout';
 const PublicShare = lazy(() => import('./pages/PublicShare'));
 
@@ -58,17 +59,17 @@ function App() {
           <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
           <Route path="/share/:token" element={<PublicShare />} />
 
-          {/* Protected dashboard routes */}
+          {/* Protected dashboard routes — each page wrapped in its own ErrorBoundary */}
           <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
-            <Route index element={<Dashboard />} />
-            <Route path="files" element={<MyFiles />} />
-            <Route path="shared" element={<SharedFiles />} />
-            <Route path="favorites" element={<Favorites />} />
-            <Route path="trash" element={<Trash />} />
-            <Route path="analytics" element={<StorageAnalytics />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="admin" element={<AdminRoute><Admin /></AdminRoute>} />
+            <Route index element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+            <Route path="files" element={<ErrorBoundary><MyFiles /></ErrorBoundary>} />
+            <Route path="shared" element={<ErrorBoundary><SharedFiles /></ErrorBoundary>} />
+            <Route path="favorites" element={<ErrorBoundary><Favorites /></ErrorBoundary>} />
+            <Route path="trash" element={<ErrorBoundary><Trash /></ErrorBoundary>} />
+            <Route path="analytics" element={<ErrorBoundary><StorageAnalytics /></ErrorBoundary>} />
+            <Route path="profile" element={<ErrorBoundary><Profile /></ErrorBoundary>} />
+            <Route path="settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+            <Route path="admin" element={<AdminRoute><ErrorBoundary><Admin /></ErrorBoundary></AdminRoute>} />
           </Route>
 
           {/* 404 */}
@@ -80,3 +81,4 @@ function App() {
 }
 
 export default App;
+

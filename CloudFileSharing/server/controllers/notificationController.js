@@ -4,7 +4,7 @@ const { getPaginationMeta, paginate } = require('../utils/helpers');
 // ── Get Notifications ──────────────────────────────────────────────────────────
 exports.getNotifications = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, unreadOnly } = req.query;
+    const { page = 1, limit = 100, unreadOnly } = req.query;
     const query = { user: req.user._id };
     if (unreadOnly === 'true') query.isRead = false;
 

@@ -13,7 +13,7 @@ export const Spinner = ({ size = 20, className = '' }) => (
     width={size} height={size}
     viewBox="0 0 24 24" fill="none"
     className={`${className}`}
-    style={{ color: '#A78BFA', animation: 'spinSlow 1s linear infinite' }}
+    style={{ color: 'var(--primary)', animation: 'spinSlow 1s linear infinite' }}
   >
     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="31.416" strokeDashoffset="10" strokeLinecap="round" />
   </svg>
@@ -124,7 +124,7 @@ export const EmptyState = ({ icon: Icon, title, description, action }) => (
           marginBottom: '24px', border: '1px solid rgba(124,58,237,0.1)',
         }}
       >
-        <Icon size={34} style={{ color: '#A78BFA' }} />
+        <Icon size={34} style={{ color: 'var(--primary)' }} />
       </motion.div>
     )}
     <h3 style={{

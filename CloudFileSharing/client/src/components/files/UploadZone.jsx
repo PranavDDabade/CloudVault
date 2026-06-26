@@ -47,15 +47,15 @@ const UploadZone = ({ onFiles, disabled, compact = false }) => {
               : 'rgba(124,58,237,0.1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             border: '2px solid',
-            borderColor: isDragActive ? '#A78BFA' : 'rgba(124,58,237,0.25)',
+            borderColor: isDragActive ? 'var(--primary)' : 'rgba(124,58,237,0.25)',
             transition: 'all 0.3s',
             boxShadow: isDragActive ? '0 8px 32px rgba(124,58,237,0.2)' : 'none',
           }}
         >
           {isDragActive ? (
-            <FolderOpen size={compact ? 32 : 44} style={{ color: '#A78BFA' }} />
+            <FolderOpen size={compact ? 32 : 44} style={{ color: 'var(--primary)' }} />
           ) : (
-            <Cloud size={compact ? 32 : 44} style={{ color: '#818CF8' }} />
+            <Cloud size={compact ? 32 : 44} style={{ color: 'var(--primary)' }} />
           )}
         </motion.div>
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, RotateCcw, Trash as TrashIcon, AlertTriangle } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { fileService } from '../services/fileService';
+import { folderService } from '../services/folderService';
 import { EmptyState, SkeletonRow } from '../components/ui/index.jsx';
 import Modal from '../components/ui/Modal';
 import { formatBytes, formatDate } from '../utils/formatters';
@@ -10,7 +11,7 @@ import { getFileIcon } from '../utils/fileIcons';
 import toast from 'react-hot-toast';
 
 const Trash = () => {
-  const [files, setFiles] = useState([]);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
 
@@ -21,7 +22,7 @@ const Trash = () => {
   const load = async () => {
     try {
       const { data } = await fileService.getTrash();
-      setFiles(data.files || []);
+      setItems(data.files || []); // Unified payload returned under 'files' property
     } catch {
       toast.error('Failed to load trash');
     } finally {
@@ -29,21 +30,29 @@ const Trash = () => {
     }
   };
 
-  const handleRestore = async (id) => {
+  const handleRestore = async (item) => {
     try {
-      await fileService.restoreFile(id);
-      setFiles(prev => prev.filter(f => f._id !== id));
-      toast.success('File restored!');
+      if (item.isFolder) {
+        await folderService.restoreFolder(item._id);
+      } else {
+        await fileService.restoreFile(item._id);
+      }
+      setItems(prev => prev.filter(i => i._id !== item._id));
+      toast.success(`${item.isFolder ? 'Folder' : 'File'} restored!`);
     } catch {
       toast.error('Restore failed.');
     }
   };
 
-  const handlePermanentDelete = async (id) => {
+  const handlePermanentDelete = async (item) => {
     try {
-      await fileService.permanentDelete(id);
-      setFiles(prev => prev.filter(f => f._id !== id));
-      toast.success('File permanently deleted.');
+      if (item.isFolder) {
+        await folderService.permanentDeleteFolder(item._id);
+      } else {
+        await fileService.permanentDelete(item._id);
+      }
+      setItems(prev => prev.filter(i => i._id !== item._id));
+      toast.success(`${item.isFolder ? 'Folder' : 'File'} permanently deleted.`);
     } catch {
       toast.error('Delete failed.');
     }
@@ -52,7 +61,7 @@ const Trash = () => {
   const handleEmptyTrash = async () => {
     try {
       await fileService.emptyTrash();
-      setFiles([]);
+      setItems([]);
       setShowEmptyConfirm(false);
       toast.success('Trash emptied!');
     } catch {
@@ -72,10 +81,10 @@ const Trash = () => {
             <h1 className="text-page-title">Trash</h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-            Files are automatically deleted permanently after 30 days
+            Items are automatically deleted permanently after 30 days
           </p>
         </div>
-        {files.length > 0 && (
+        {items.length > 0 && (
           <button className="btn btn-danger btn-sm" onClick={() => setShowEmptyConfirm(true)} style={{ borderRadius: 'var(--radius-button)', height: '40px' }}>
             <TrashIcon size={14} /> Empty Trash
           </button>
@@ -83,7 +92,7 @@ const Trash = () => {
       </motion.div>
 
       {/* Warning banner */}
-      {files.length > 0 && (
+      {items.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           style={{
             display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '16px',
@@ -92,23 +101,30 @@ const Trash = () => {
           }}>
           <AlertTriangle size={18} style={{ color: 'var(--warning)', marginTop: '2px', flexShrink: 0 }} />
           <p style={{ fontSize: '14px', color: 'var(--warning)', lineHeight: 1.5 }}>
-            Items in the trash will be permanently deleted after 30 days. Click 'Restore' to recover files.
+            Items in the trash will be permanently deleted after 30 days. Click 'Restore' to recover items.
           </p>
         </motion.div>
       )}
 
       {loading ? (
         <div>{[...Array(5)].map((_, i) => <SkeletonRow key={i} />)}</div>
-      ) : files.length === 0 ? (
-        <EmptyState icon={Trash2} title="Trash is empty" description="Deleted files will appear here" />
+      ) : items.length === 0 ? (
+        <EmptyState icon={Trash2} title="Trash is empty" description="Deleted items will appear here" />
       ) : (
         <div className="table-container">
           <AnimatePresence>
-            {files.map((file, idx) => {
-              const fileIcon = getFileIcon(file);
-              const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File;
+            {items.map((item, idx) => {
+              const isFolder = item.isFolder;
+              const fileIcon = isFolder
+                ? { bg: 'rgba(124, 92, 255, 0.1)', color: item.color || 'var(--primary)' }
+                : getFileIcon(item);
+              
+              const LIcon = isFolder
+                ? LucideIcons.Folder
+                : (LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File);
+
               return (
-                <motion.div key={file._id}
+                <motion.div key={item._id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10, height: 0 }}
@@ -120,18 +136,18 @@ const Trash = () => {
                   </div>
                   <div style={{ flex: 1, minWidth: 0, marginLeft: '16px' }}>
                     <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px' }}>
-                      {file.name}
+                      {item.name}
                     </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {formatBytes(file.size)} · Deleted {formatDate(file.deletedAt)}
+                      {!isFolder && `${formatBytes(item.size)} · `}Deleted {formatDate(item.deletedAt)}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: '12px', marginLeft: '16px' }}>
-                    <button onClick={() => handleRestore(file._id)}
+                    <button onClick={() => handleRestore(item)}
                       className="btn btn-secondary btn-sm" style={{ height: '36px', fontSize: '13px', borderRadius: 'var(--radius-button)' }}>
                       <RotateCcw size={14} /> Restore
                     </button>
-                    <button onClick={() => handlePermanentDelete(file._id)}
+                    <button onClick={() => handlePermanentDelete(item)}
                       className="btn btn-danger btn-sm" style={{ height: '36px', fontSize: '13px', borderRadius: 'var(--radius-button)' }}>
                       <TrashIcon size={14} /> Delete Forever
                     </button>
@@ -147,7 +163,7 @@ const Trash = () => {
       <Modal isOpen={showEmptyConfirm} onClose={() => setShowEmptyConfirm(false)} title="Empty Trash?" size="sm">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: 1.5 }}>
-            This will permanently delete all <strong>{files.length} file(s)</strong> in your trash. This action is irreversible.
+            This will permanently delete all <strong>{items.length} item(s)</strong> in your trash. This action is irreversible.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
             <button className="btn btn-secondary" onClick={() => setShowEmptyConfirm(false)}>Cancel</button>

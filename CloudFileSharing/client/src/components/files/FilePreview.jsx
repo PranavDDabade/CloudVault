@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Share2, Star, ExternalLink, ZoomIn, ZoomOut } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -15,7 +16,19 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
     if (!isOpen || !file) return;
     setZoom(1);
     setDownloadUrl(null);
+
+    // Track view count in the backend (ignore on public share pages to avoid 401s)
+    if (file._id && !window.location.href.includes('/share/')) {
+      fileService.getFile(file._id).catch(() => {});
+    }
   }, [file, isOpen]);
+
+  // Prevent body scroll
+  useEffect(() => {
+    if (isOpen) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   if (!file) return null;
 
@@ -41,27 +54,24 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
 
   const canPreview = isImage || isVideo || isAudio || isPdf;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="modal-overlay"
+          className="preview-modal-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          style={{ alignItems: 'stretch', padding: 0 }}
         >
           <motion.div
+            className="preview-modal"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'var(--surface)', display: 'flex', flexDirection: 'column',
-              width: '100%', maxWidth: '900px', margin: '16px auto',
-              borderRadius: '20px', overflow: 'hidden', maxHeight: 'calc(100vh - 32px)',
-              border: '1px solid var(--border)',
+              height: canPreview ? '100%' : 'auto',
             }}
           >
             {/* Header */}
@@ -112,7 +122,16 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
             </div>
 
             {/* Preview area */}
-            <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', background: '#000a14' }}>
+            <div style={{
+              flex: 1,
+              overflow: 'auto',
+              display: 'flex',
+              alignItems: isPdf ? 'stretch' : 'center',
+              justifyContent: 'center',
+              minHeight: '300px',
+              background: '#000a14',
+              width: '100%'
+            }}>
               {isImage && (
                 <img
                   src={file.previewUrl}
@@ -121,7 +140,7 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
                 />
               )}
               {isVideo && (
-                <video controls style={{ maxWidth: '100%', maxHeight: '70vh' }}>
+                <video controls style={{ maxWidth: '100%', maxHeight: '100%', width: '100%', objectFit: 'contain' }}>
                   <source src={file.previewUrl} type={file.mimeType} />
                 </video>
               )}
@@ -133,7 +152,7 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
                 </div>
               )}
               {isPdf && (
-                <iframe src={file.previewUrl} style={{ width: '100%', height: '70vh', border: 'none' }} title={file.name} />
+                <iframe src={file.previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={file.name} />
               )}
               {!canPreview && (
                 <div style={{ textAlign: 'center', padding: '60px 24px' }}>
@@ -157,7 +176,8 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

@@ -10,6 +10,7 @@ const DashboardLayout = () => {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFolder, setCurrentFolder] = useState(null);
+  const [uploadSuccessTrigger, setUploadSuccessTrigger] = useState(0);
 
   const handleSearch = useCallback((q) => setSearchQuery(q), []);
 
@@ -34,7 +35,13 @@ const DashboardLayout = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <Outlet context={{ searchQuery, currentFolder, setCurrentFolder, openUpload: () => setUploadOpen(true) }} />
+          <Outlet context={{
+            searchQuery,
+            currentFolder,
+            setCurrentFolder,
+            openUpload: () => setUploadOpen(true),
+            uploadSuccessTrigger,
+          }} />
         </motion.main>
       </div>
 
@@ -43,6 +50,7 @@ const DashboardLayout = () => {
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
         folderId={currentFolder}
+        onSuccess={() => setUploadSuccessTrigger(prev => prev + 1)}
       />
     </div>
   );

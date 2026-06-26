@@ -94,7 +94,7 @@ const FileList = ({
                 cursor: 'pointer', transition: 'background 0.15s',
                 background: isSelected ? 'rgba(79,70,229,0.08)' : 'transparent',
               }}
-              className="hover:bg-white/5"
+              className="hover-row"
             >
               {/* Icon */}
               <div style={{
@@ -130,7 +130,7 @@ const FileList = ({
               {/* Status */}
               <div style={{ display: 'flex', gap: '4px' }}>
                 {file.isFavorite && <Star size={13} style={{ color: '#FCD34D' }} fill="#FCD34D" />}
-                {file.isShared && <Share2 size={13} style={{ color: '#818CF8' }} />}
+                {file.isShared && <Share2 size={13} style={{ color: 'var(--primary)' }} />}
               </div>
 
               {/* Actions */}

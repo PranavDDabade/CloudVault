@@ -119,7 +119,7 @@ const ResetPassword = () => {
         )}
 
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <Link to="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none' }} className="hover:text-white">
+          <Link to="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none' }} className="hover-text-theme">
             Back to Sign In
           </Link>
         </div>

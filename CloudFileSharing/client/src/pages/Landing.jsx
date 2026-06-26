@@ -81,14 +81,14 @@ const Navbar = () => {
 
       {/* Center navigation */}
       <div className="hidden md:flex items-center gap-8" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-        <a href="#features" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover:text-white">Features</a>
-        <a href="#how-it-works" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover:text-white">How It Works</a>
-        <a href="#pricing" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover:text-white">Pricing</a>
-        <a href="#faqs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover:text-white">FAQ</a>
+        <a href="#features" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Features</a>
+        <a href="#how-it-works" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">How It Works</a>
+        <a href="#pricing" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Pricing</a>
+        <a href="#faqs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">FAQ</a>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-        <Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px' }} className="hover:text-white">Sign in</Link>
+        <Link to="/login" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px' }} className="hover-text-theme">Sign in</Link>
         <Link to="/register" style={{ textDecoration: 'none' }}>
           <button className="btn btn-primary btn-sm" style={{ borderRadius: 'var(--radius-button)', fontSize: '14px', height: '38px' }}>
             Get Started <ArrowRight size={14} />

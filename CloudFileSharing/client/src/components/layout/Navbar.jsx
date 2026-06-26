@@ -124,7 +124,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
                   boxShadow: 'var(--shadow-lg)', overflow: 'hidden', zIndex: 50,
                 }}
               >
-                <div className="flex justify-between items-center p-4 border-b border-white/5">
+                <div className="flex justify-between items-center p-4 border-b" style={{ borderBottomColor: 'var(--border)' }}>
                   <span className="font-semibold text-sm">Notifications</span>
                   <div className="flex gap-2">
                     <button onClick={markAllAsRead} className="btn btn-ghost btn-sm px-2"><CheckCheck size={14} /></button>
@@ -137,11 +137,15 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
                   ) : (
                     notifications.map((notif) => (
                       <div key={notif._id} onClick={() => markAsRead(notif._id)}
-                        className={`p-4 border-b border-white/5 cursor-pointer flex gap-3 ${notif.isRead ? '' : 'bg-zinc-800/30'}`}>
+                        className="p-4 cursor-pointer flex gap-3"
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          background: notif.isRead ? 'transparent' : 'rgba(124, 92, 255, 0.08)'
+                        }}>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium mb-1 text-zinc-200">{notif.title}</p>
-                          <p className="text-xs text-zinc-400 truncate">{notif.message}</p>
-                          <p className="text-xs text-zinc-500 mt-2">{formatDate(notif.createdAt)}</p>
+                          <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-primary)' }}>{notif.title}</p>
+                          <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{notif.message}</p>
+                          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>{formatDate(notif.createdAt)}</p>
                         </div>
                       </div>
                     ))
@@ -170,9 +174,9 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
                   boxShadow: 'var(--shadow-lg)', overflow: 'hidden', zIndex: 50,
                 }}
               >
-                <div className="p-4 border-b border-white/5 bg-zinc-800/20">
-                  <p className="text-sm font-semibold truncate">{user?.name}</p>
-                  <p className="text-xs text-zinc-400 truncate">{user?.email}</p>
+                <div className="p-4 border-b" style={{ borderBottomColor: 'var(--border)', background: 'var(--surface-hover)' }}>
+                  <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.name}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>{user?.email}</p>
                 </div>
                 <div className="p-2">
                   <button onClick={() => { navigate('/dashboard/profile'); setShowProfile(false); }} className="context-menu-item">
@@ -181,7 +185,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
                   <button onClick={() => { navigate('/dashboard/settings'); setShowProfile(false); }} className="context-menu-item">
                     <Settings size={16} /> Settings
                   </button>
-                  <div className="h-px bg-white/5 my-2" />
+                  <div className="h-px my-2" style={{ background: 'var(--border)' }} />
                   <button onClick={handleLogout} className="context-menu-item danger">
                     <LogOut size={16} /> Sign Out
                   </button>

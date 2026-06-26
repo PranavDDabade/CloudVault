@@ -101,7 +101,7 @@ const ForgotPassword = () => {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '32px' }}>
-          <Link to="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }} className="hover:text-white">
+          <Link to="/login" style={{ color: 'var(--text-secondary)', fontSize: '14px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '8px' }} className="hover-text-theme">
             <ArrowLeft size={14} /> Back to Sign In
           </Link>
         </div>

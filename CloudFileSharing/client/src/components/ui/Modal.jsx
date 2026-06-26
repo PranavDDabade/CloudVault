@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -21,7 +22,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', hideClose = fals
 
   const sizeMap = { sm: '380px', md: '520px', lg: '680px', xl: '800px' };
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -31,6 +32,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', hideClose = fals
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
+          style={{ zIndex: 110 }}
         >
           <motion.div
             className="modal"
@@ -66,7 +68,8 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md', hideClose = fals
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 

@@ -1,5 +1,7 @@
 const Folder = require('../models/Folder');
 const File = require('../models/File');
+const User = require('../models/User');
+const { deleteFromS3 } = require('../services/s3Service');
 const { logActivity } = require('../utils/helpers');
 
 // ── Create Folder ─────────────────────────────────────────────────────────────
@@ -46,22 +48,28 @@ exports.createFolder = async (req, res, next) => {
 // ── Get Folders ────────────────────────────────────────────────────────────────
 exports.getFolders = async (req, res, next) => {
   try {
-    const { parentId, search } = req.query;
+    const { parentId, search, favorites, limit, sort = 'name' } = req.query;
     const query = { owner: req.user._id, isDeleted: false };
 
-    if (parentId === 'root' || !parentId) {
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    } else if (favorites === 'true') {
+      query.isFavorite = true;
+    } else if (parentId === 'all') {
+      // Fetch all folders globally
+    } else if (parentId === 'root' || !parentId) {
       query.parent = null;
     } else {
       query.parent = parentId;
     }
 
-    if (search) {
-      query.$text = { $search: search };
+    let foldersQuery = Folder.find(query).sort(sort);
+    if (limit) {
+      foldersQuery = foldersQuery.limit(parseInt(limit));
     }
+    const folders = await foldersQuery.lean();
 
-    const folders = await Folder.find(query).sort('name').lean();
-
-    // Add file counts
+    // Add file counts and subfolders count
     const foldersWithCounts = await Promise.all(
       folders.map(async (folder) => {
         const fileCount = await File.countDocuments({ folder: folder._id, isDeleted: false });
@@ -94,17 +102,73 @@ exports.getFolder = async (req, res, next) => {
 // ── Update Folder ──────────────────────────────────────────────────────────────
 exports.updateFolder = async (req, res, next) => {
   try {
-    const { name, color, isFavorite } = req.body;
+    const { name, color, isFavorite, parentId } = req.body;
     const folder = await Folder.findOne({ _id: req.params.id, owner: req.user._id });
     if (!folder) return res.status(404).json({ success: false, message: 'Folder not found.' });
 
-    if (name) folder.name = name;
+    const oldName = folder.name;
+
+    if (name) {
+      folder.name = name;
+      // Recursively update descendant path names
+      await Folder.updateMany(
+        { owner: req.user._id, "path.id": folder._id },
+        { $set: { "path.$[elem].name": name } },
+        { arrayFilters: [{ "elem.id": folder._id }] }
+      );
+    }
+
     if (color) folder.color = color;
     if (isFavorite !== undefined) folder.isFavorite = isFavorite;
 
+    if (parentId !== undefined) {
+      const newParentId = parentId === 'root' || !parentId ? null : parentId;
+      
+      // If we are actually changing parent
+      if (String(folder.parent || '') !== String(newParentId || '')) {
+        if (newParentId) {
+          // Circular reference check
+          if (newParentId.toString() === folder._id.toString()) {
+            return res.status(400).json({ success: false, message: 'Cannot move folder into itself.' });
+          }
+          const parentFolder = await Folder.findOne({ _id: newParentId, owner: req.user._id });
+          if (!parentFolder) return res.status(404).json({ success: false, message: 'Parent folder not found.' });
+          
+          // Check if parent is descendant of current folder
+          const isChild = parentFolder.path.some(p => p.id.toString() === folder._id.toString());
+          if (isChild) {
+            return res.status(400).json({ success: false, message: 'Cannot move folder into its own subfolder.' });
+          }
+          
+          folder.parent = newParentId;
+          folder.path = [...parentFolder.path, { id: parentFolder._id, name: parentFolder.name }];
+        } else {
+          folder.parent = null;
+          folder.path = [];
+        }
+
+        // Update descendant paths
+        const descendants = await Folder.find({ owner: req.user._id, "path.id": folder._id });
+        for (const desc of descendants) {
+          const idx = desc.path.findIndex(p => p.id.toString() === folder._id.toString());
+          if (idx !== -1) {
+            desc.path = [...folder.path, { id: folder._id, name: folder.name }, ...desc.path.slice(idx + 1)];
+            await desc.save();
+          }
+        }
+      }
+    }
+
     await folder.save();
 
-    await logActivity({ user: req.user._id, action: 'rename', resourceType: 'folder', resourceId: folder._id, resourceName: folder.name, ip: req.ip });
+    await logActivity({
+      user: req.user._id,
+      action: name && name !== oldName ? 'rename' : 'move',
+      resourceType: 'folder',
+      resourceId: folder._id,
+      resourceName: folder.name,
+      ip: req.ip
+    });
 
     res.status(200).json({ success: true, message: 'Folder updated.', folder });
   } catch (error) {
@@ -115,22 +179,106 @@ exports.updateFolder = async (req, res, next) => {
 // ── Delete Folder ──────────────────────────────────────────────────────────────
 exports.deleteFolder = async (req, res, next) => {
   try {
-    const folder = await Folder.findOne({ _id: req.params.id, owner: req.user._id });
+    const folder = await Folder.findOne({ _id: req.params.id, owner: req.user._id, isDeleted: false });
     if (!folder) return res.status(404).json({ success: false, message: 'Folder not found.' });
 
-    // Soft delete folder and its files
+    const deletedAt = new Date();
+    
+    // Soft delete the folder itself
     folder.isDeleted = true;
-    folder.deletedAt = new Date();
+    folder.deletedAt = deletedAt;
     await folder.save();
 
+    // Soft delete all subfolders recursively
+    const descendants = await Folder.find({ owner: req.user._id, "path.id": folder._id });
+    const descendantIds = descendants.map(d => d._id);
+    
+    if (descendantIds.length > 0) {
+      await Folder.updateMany(
+        { _id: { $in: descendantIds } },
+        { isDeleted: true, deletedAt }
+      );
+    }
+
+    // Soft delete all files in this folder or subfolders
+    const folderIds = [folder._id, ...descendantIds];
     await File.updateMany(
-      { folder: folder._id, owner: req.user._id },
-      { isDeleted: true, deletedAt: new Date() }
+      { owner: req.user._id, folder: { $in: folderIds }, isDeleted: false },
+      { isDeleted: true, deletedAt }
     );
 
     await logActivity({ user: req.user._id, action: 'delete_folder', resourceType: 'folder', resourceId: folder._id, resourceName: folder.name, ip: req.ip });
 
     res.status(200).json({ success: true, message: 'Folder moved to trash.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Restore Folder ─────────────────────────────────────────────────────────────
+exports.restoreFolder = async (req, res, next) => {
+  try {
+    const folder = await Folder.findOne({ _id: req.params.id, owner: req.user._id, isDeleted: true });
+    if (!folder) return res.status(404).json({ success: false, message: 'Folder not found in trash.' });
+
+    // Restore folder itself
+    folder.isDeleted = false;
+    folder.deletedAt = null;
+    await folder.save();
+
+    // Restore all subfolders recursively
+    const descendants = await Folder.find({ owner: req.user._id, "path.id": folder._id, isDeleted: true });
+    const descendantIds = descendants.map(d => d._id);
+    
+    if (descendantIds.length > 0) {
+      await Folder.updateMany(
+        { _id: { $in: descendantIds } },
+        { isDeleted: false, deletedAt: null }
+      );
+    }
+
+    // Restore all files in this folder or subfolders
+    const folderIds = [folder._id, ...descendantIds];
+    await File.updateMany(
+      { owner: req.user._id, folder: { $in: folderIds }, isDeleted: true },
+      { isDeleted: false, deletedAt: null }
+    );
+
+    await logActivity({ user: req.user._id, action: 'restore', resourceType: 'folder', resourceId: folder._id, resourceName: folder.name, ip: req.ip });
+
+    res.status(200).json({ success: true, message: 'Folder restored.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Permanent Delete Folder ───────────────────────────────────────────────────
+exports.permanentDeleteFolder = async (req, res, next) => {
+  try {
+    const folder = await Folder.findOne({ _id: req.params.id, owner: req.user._id, isDeleted: true });
+    if (!folder) return res.status(404).json({ success: false, message: 'Folder not found in trash.' });
+
+    // Find all subfolders recursively
+    const descendants = await Folder.find({ owner: req.user._id, "path.id": folder._id });
+    const folderIds = [folder._id, ...descendants.map(d => d._id)];
+
+    // Find all files in these folders
+    const filesToDelete = await File.find({ owner: req.user._id, folder: { $in: folderIds } });
+    
+    // Delete files from S3
+    await Promise.allSettled(filesToDelete.map(f => deleteFromS3(f.key)));
+
+    // Reclaim storage
+    const totalSize = filesToDelete.reduce((sum, f) => sum + f.size, 0);
+    await User.findByIdAndUpdate(req.user._id, { $inc: { storageUsed: -totalSize } });
+
+    // Delete files and folders from DB
+    await File.deleteMany({ _id: { $in: filesToDelete.map(f => f._id) } });
+    await Folder.deleteMany({ _id: { $in: folderIds } });
+
+    await logActivity({ user: req.user._id, action: 'permanent_delete', resourceType: 'folder', resourceName: folder.name, ip: req.ip });
+
+    res.status(200).json({ success: true, message: 'Folder and all its contents permanently deleted.' });
   } catch (error) {
     next(error);
   }

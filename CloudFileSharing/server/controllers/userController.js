@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const File = require('../models/File');
+const Folder = require('../models/Folder');
 const { uploadToS3, deleteFromS3, getSignedDownloadUrl } = require('../services/s3Service');
 const { generateS3Key, logActivity } = require('../utils/helpers');
 
@@ -180,6 +181,8 @@ exports.getStorageStats = async (req, res, next) => {
 
     const totalFiles = await File.countDocuments({ owner: req.user._id, isDeleted: false });
     const trashFiles = await File.countDocuments({ owner: req.user._id, isDeleted: true });
+    const totalFolders = await Folder.countDocuments({ owner: req.user._id, isDeleted: false });
+    const trashFolders = await Folder.countDocuments({ owner: req.user._id, isDeleted: true });
 
     res.status(200).json({
       success: true,
@@ -190,6 +193,8 @@ exports.getStorageStats = async (req, res, next) => {
         plan: user.plan,
         totalFiles,
         trashFiles,
+        totalFolders,
+        trashFolders,
         fileTypeStats,
       },
     });

@@ -86,7 +86,7 @@ const UploadModal = ({ isOpen, onClose, folderId, onSuccess }) => {
                         background: 'rgba(124,58,237,0.1)', display: 'flex',
                         alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <File size={16} style={{ color: '#A78BFA', flexShrink: 0 }} />
+                        <File size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{
@@ -106,16 +106,16 @@ const UploadModal = ({ isOpen, onClose, folderId, onSuccess }) => {
                           className="btn btn-ghost btn-sm"
                           style={{ padding: '6px', borderRadius: '6px' }}
                         >
-                          <X size={14} style={{ color: '#EF4444' }} />
+                          <X size={14} style={{ color: 'var(--danger)' }} />
                         </motion.button>
                       )}
                       {uploading && uploadQueue[idx] && (
                         <div style={{ padding: '4px' }}>
                           {uploadQueue[idx].status === 'done'
-                            ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle2 size={18} style={{ color: '#10B981' }} /></motion.div>
+                            ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><CheckCircle2 size={18} style={{ color: 'var(--success)' }} /></motion.div>
                             : uploadQueue[idx].status === 'error'
-                            ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><AlertCircle size={18} style={{ color: '#EF4444' }} /></motion.div>
-                            : <div className="animate-spin" style={{ width: 18, height: 18, border: '2px solid #A78BFA', borderTopColor: 'transparent', borderRadius: '50%' }} />
+                            ? <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}><AlertCircle size={18} style={{ color: 'var(--danger)' }} /></motion.div>
+                            : <div className="animate-spin" style={{ width: 18, height: 18, border: '2px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%' }} />
                           }
                         </div>
                       )}
@@ -137,7 +137,7 @@ const UploadModal = ({ isOpen, onClose, folderId, onSuccess }) => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Uploading...</span>
-                <span style={{ fontSize: '13px', color: '#A78BFA', fontWeight: 600 }}>{progress}%</span>
+                <span style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 600 }}>{progress}%</span>
               </div>
               <div className="storage-bar" style={{ height: '8px', background: 'var(--surface-3)' }}>
                 <motion.div

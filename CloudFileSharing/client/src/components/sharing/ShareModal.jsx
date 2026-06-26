@@ -169,8 +169,8 @@ const ShareModal = ({ file, isOpen, onClose }) => {
         {/* Share link display */}
         {share && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-            <div style={{ background: 'rgba(79,70,229,0.08)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(79,70,229,0.2)', marginBottom: '12px' }}>
-              <p style={{ fontSize: '12px', color: '#818CF8', fontWeight: 600, marginBottom: '8px' }}>
+            <div style={{ background: 'rgba(124, 92, 255, 0.08)', borderRadius: '12px', padding: '16px', border: '1px solid rgba(124, 92, 255, 0.2)', marginBottom: '12px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: 600, marginBottom: '8px' }}>
                 ✓ Share link is active
               </p>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -189,7 +189,7 @@ const ShareModal = ({ file, isOpen, onClose }) => {
               <button onClick={copyLink} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
                 {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Copy Link'}
               </button>
-              <button onClick={disableShare} className="btn btn-ghost btn-sm" style={{ color: '#EF4444' }}>
+              <button onClick={disableShare} className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }}>
                 <X size={14} /> Disable
               </button>
             </div>

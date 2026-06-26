@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const SharedFile = require('../models/SharedFile');
 const File = require('../models/File');
+const Folder = require('../models/Folder');
 const User = require('../models/User');
 const { getSignedDownloadUrl } = require('../services/s3Service');
 const { logActivity, createNotification } = require('../utils/helpers');
@@ -9,13 +10,28 @@ const { sendShareNotificationEmail } = require('../utils/sendEmail');
 // ── Create Share Link / Share by Email ─────────────────────────────────────────
 exports.createShare = async (req, res, next) => {
   try {
-    const { fileId, isPublic, permissions, expiresAt, password, emails } = req.body;
+    const { fileId, folderId, isPublic, permissions, expiresAt, password, emails } = req.body;
 
-    const file = await File.findOne({ _id: fileId, owner: req.user._id, isDeleted: false });
-    if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
+    let resource;
+    let resourceType;
+    const shareQuery = { sharedBy: req.user._id };
+
+    if (fileId) {
+      resource = await File.findOne({ _id: fileId, owner: req.user._id, isDeleted: false });
+      if (!resource) return res.status(404).json({ success: false, message: 'File not found.' });
+      resourceType = 'file';
+      shareQuery.file = fileId;
+    } else if (folderId) {
+      resource = await Folder.findOne({ _id: folderId, owner: req.user._id, isDeleted: false });
+      if (!resource) return res.status(404).json({ success: false, message: 'Folder not found.' });
+      resourceType = 'folder';
+      shareQuery.folder = folderId;
+    } else {
+      return res.status(400).json({ success: false, message: 'Either fileId or folderId must be provided.' });
+    }
 
     // Check if already shared
-    let share = await SharedFile.findOne({ file: fileId, sharedBy: req.user._id });
+    let share = await SharedFile.findOne(shareQuery);
 
     const sharedWith = [];
     const targetUsers = [];
@@ -59,7 +75,7 @@ exports.createShare = async (req, res, next) => {
 
         // Send email invitations for new emails
         const emailPromises = sharedWith.map((sw) =>
-          sendShareNotificationEmail(sw.email, req.user.name, file.name, share.publicLink).catch(console.error)
+          sendShareNotificationEmail(sw.email, req.user.name, resource.name, share.publicLink).catch(console.error)
         );
         await Promise.allSettled(emailPromises);
 
@@ -67,10 +83,10 @@ exports.createShare = async (req, res, next) => {
         for (const targetUser of targetUsers) {
           await createNotification({
             user: targetUser._id,
-            type: 'file_shared',
-            title: 'File Shared with You',
-            message: `"${req.user.name}" shared the file "${file.name}" with you.`,
-            metadata: { fileId: file._id, shareId: share._id },
+            type: resourceType === 'file' ? 'file_shared' : 'folder_shared',
+            title: `${resourceType === 'file' ? 'File' : 'Folder'} Shared with You`,
+            message: `"${req.user.name}" shared the ${resourceType} "${resource.name}" with you.`,
+            metadata: { fileId: fileId || undefined, folderId: folderId || undefined, shareId: share._id },
           });
         }
 
@@ -78,12 +94,13 @@ exports.createShare = async (req, res, next) => {
       }
 
       // If no new emails to add, return conflict error or the existing share details
-      return res.status(409).json({ success: false, message: 'File already has an active share.', share });
+      return res.status(409).json({ success: false, message: `This ${resourceType} already has an active share.`, share });
     }
 
     // Creating a brand new share
     const shareData = {
-      file: fileId,
+      file: fileId || null,
+      folder: folderId || null,
       sharedBy: req.user._id,
       isPublic: isPublic !== false,
       permissions: permissions || { canView: true, canDownload: true, canEdit: false },
@@ -99,14 +116,14 @@ exports.createShare = async (req, res, next) => {
 
     share = await SharedFile.create(shareData);
 
-    file.isShared = true;
-    file.shareCount += 1;
-    await file.save();
+    resource.isShared = true;
+    resource.shareCount = (resource.shareCount || 0) + 1;
+    await resource.save();
 
     // Send email invitations
     if (sharedWith.length > 0) {
       const emailPromises = sharedWith.map((sw) =>
-        sendShareNotificationEmail(sw.email, req.user.name, file.name, share.publicLink).catch(console.error)
+        sendShareNotificationEmail(sw.email, req.user.name, resource.name, share.publicLink).catch(console.error)
       );
       await Promise.allSettled(emailPromises);
     }
@@ -115,21 +132,21 @@ exports.createShare = async (req, res, next) => {
     for (const targetUser of targetUsers) {
       await createNotification({
         user: targetUser._id,
-        type: 'file_shared',
-        title: 'File Shared with You',
-        message: `"${req.user.name}" shared the file "${file.name}" with you.`,
-        metadata: { fileId: file._id, shareId: share._id },
+        type: resourceType === 'file' ? 'file_shared' : 'folder_shared',
+        title: `${resourceType === 'file' ? 'File' : 'Folder'} Shared with You`,
+        message: `"${req.user.name}" shared the ${resourceType} "${resource.name}" with you.`,
+        metadata: { fileId: fileId || undefined, folderId: folderId || undefined, shareId: share._id },
       });
     }
 
-    await logActivity({ user: req.user._id, action: 'share', resourceType: 'share', resourceId: share._id, resourceName: file.name, ip: req.ip });
+    await logActivity({ user: req.user._id, action: 'share', resourceType: 'share', resourceId: share._id, resourceName: resource.name, ip: req.ip });
 
     await createNotification({
       user: req.user._id,
-      type: 'file_shared',
-      title: 'File Shared',
-      message: `"${file.name}" is now shared.`,
-      metadata: { fileId: file._id, shareId: share._id },
+      type: resourceType === 'file' ? 'file_shared' : 'folder_shared',
+      title: `${resourceType === 'file' ? 'File' : 'Folder'} Shared`,
+      message: `"${resource.name}" is now shared.`,
+      metadata: { fileId: fileId || undefined, folderId: folderId || undefined, shareId: share._id },
     });
 
     res.status(201).json({ success: true, message: 'Share link created.', share });
@@ -212,6 +229,7 @@ exports.getMyShares = async (req, res, next) => {
   try {
     const shares = await SharedFile.find({ sharedBy: req.user._id })
       .populate('file', 'name mimeType size fileType key')
+      .populate('folder', 'name color icon')
       .sort('-createdAt')
       .lean();
 
@@ -238,6 +256,7 @@ exports.getSharedWithMe = async (req, res, next) => {
       isActive: true,
     })
       .populate('file', 'name mimeType size fileType key')
+      .populate('folder', 'name color icon')
       .populate('sharedBy', 'name avatar')
       .sort('-createdAt')
       .lean();

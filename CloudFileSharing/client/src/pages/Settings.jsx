@@ -76,7 +76,7 @@ const Settings = () => {
                   textAlign: 'left',
                   transition: 'var(--transition-fast)',
                 }}
-                className={isActive ? '' : 'hover:text-white'}
+                className={isActive ? '' : 'hover-text-theme'}
               >
                 <Icon size={16} />
                 <span>{label}</span>

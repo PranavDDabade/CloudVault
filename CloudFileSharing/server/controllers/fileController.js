@@ -292,11 +292,16 @@ exports.permanentDelete = async (req, res, next) => {
 exports.getTrash = async (req, res, next) => {
   try {
     const { page = 1, limit = 20 } = req.query;
-    const { skip, limit: limitNum } = paginate({}, page, limit);
-    const query = { owner: req.user._id, isDeleted: true };
-    const total = await File.countDocuments(query);
-    const files = await File.find(query).sort('-deletedAt').skip(skip).limit(limitNum).lean();
+    const limitNum = parseInt(limit);
+    const pageNum = parseInt(page);
+    const skip = (pageNum - 1) * limitNum;
 
+    const query = { owner: req.user._id, isDeleted: true };
+
+    const files = await File.find(query).sort('-deletedAt').lean();
+    const folders = await Folder.find(query).sort('-deletedAt').lean();
+
+    const foldersMapped = folders.map(f => ({ ...f, isFolder: true }));
     const filesWithUrls = await Promise.all(
       files.map(async (file) => {
         file.previewUrl = await getSignedDownloadUrl(file.key, 3600);
@@ -304,7 +309,18 @@ exports.getTrash = async (req, res, next) => {
       })
     );
 
-    res.status(200).json({ success: true, files: filesWithUrls, pagination: getPaginationMeta(total, parseInt(page), limitNum) });
+    const combined = [...foldersMapped, ...filesWithUrls].sort(
+      (a, b) => new Date(b.deletedAt) - new Date(a.deletedAt)
+    );
+
+    const total = combined.length;
+    const paginatedItems = combined.slice(skip, skip + limitNum);
+
+    res.status(200).json({
+      success: true,
+      files: paginatedItems,
+      pagination: getPaginationMeta(total, pageNum, limitNum),
+    });
   } catch (error) {
     next(error);
   }
@@ -399,6 +415,153 @@ exports.emptyTrash = async (req, res, next) => {
     await User.findByIdAndUpdate(req.user._id, { $inc: { storageUsed: -totalSize } });
 
     res.status(200).json({ success: true, message: `Trash emptied. ${files.length} file(s) permanently deleted.` });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── Analytics Stats ────────────────────────────────────────────────────────────
+exports.getStats = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const ActivityLog = require('../models/ActivityLog');
+    const Folder = require('../models/Folder');
+
+    // Thirty days ago for trend chart
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const [
+      fileTypeAgg,
+      uploadTrendAgg,
+      topDownloaded,
+      topViewed,
+      quickCounts,
+      folderCount,
+      recentActivity,
+    ] = await Promise.all([
+
+      // 1. File type distribution (active files only)
+      File.aggregate([
+        { $match: { owner: userId, isDeleted: false } },
+        {
+          $group: {
+            _id: '$fileType',
+            count: { $sum: 1 },
+            totalSize: { $sum: '$size' },
+          },
+        },
+        { $sort: { totalSize: -1 } },
+      ]),
+
+      // 2. Upload trend — daily counts for last 30 days
+      File.aggregate([
+        {
+          $match: {
+            owner: userId,
+            isDeleted: false,
+            createdAt: { $gte: thirtyDaysAgo },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$createdAt' },
+            },
+            count: { $sum: 1 },
+            totalSize: { $sum: '$size' },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]),
+
+      // 3. Top 5 files by download count
+      File.find({ owner: userId, isDeleted: false, downloadCount: { $gt: 0 } })
+        .sort({ downloadCount: -1 })
+        .limit(5)
+        .select('name fileType size downloadCount viewCount mimeType key')
+        .lean(),
+
+      // 4. Top 5 files by view count
+      File.find({ owner: userId, isDeleted: false, viewCount: { $gt: 0 } })
+        .sort({ viewCount: -1 })
+        .limit(5)
+        .select('name fileType size downloadCount viewCount mimeType key')
+        .lean(),
+
+      // 5. Quick scalar counts
+      File.aggregate([
+        { $match: { owner: userId } },
+        {
+          $group: {
+            _id: null,
+            totalFiles: {
+              $sum: { $cond: [{ $eq: ['$isDeleted', false] }, 1, 0] },
+            },
+            trashCount: {
+              $sum: { $cond: [{ $eq: ['$isDeleted', true] }, 1, 0] },
+            },
+            favoritesCount: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $eq: ['$isDeleted', false] }, { $eq: ['$isFavorite', true] }] },
+                  1,
+                  0,
+                ],
+              },
+            },
+            sharedCount: {
+              $sum: {
+                $cond: [
+                  { $and: [{ $eq: ['$isDeleted', false] }, { $eq: ['$isShared', true] }] },
+                  1,
+                  0,
+                ],
+              },
+            },
+            totalDownloads: { $sum: '$downloadCount' },
+            totalViews: { $sum: '$viewCount' },
+          },
+        },
+      ]),
+
+      // 6. Folder count
+      Folder.countDocuments({ owner: userId, isDeleted: false }),
+
+      // 7. Recent activity (last 10 entries)
+      ActivityLog.find({ user: userId })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('action resourceType resourceName description createdAt metadata')
+        .lean(),
+    ]);
+
+    const counts = quickCounts[0] || {
+      totalFiles: 0,
+      trashCount: 0,
+      favoritesCount: 0,
+      sharedCount: 0,
+      totalDownloads: 0,
+      totalViews: 0,
+    };
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        fileTypes: fileTypeAgg,
+        uploadTrend: uploadTrendAgg,
+        topDownloaded,
+        topViewed,
+        totalFiles: counts.totalFiles,
+        trashCount: counts.trashCount,
+        favoritesCount: counts.favoritesCount,
+        sharedCount: counts.sharedCount,
+        totalDownloads: counts.totalDownloads,
+        totalViews: counts.totalViews,
+        folderCount,
+        recentActivity,
+      },
+    });
   } catch (error) {
     next(error);
   }
