@@ -56,15 +56,13 @@ function App() {
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
           <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
-          <Route path="share/:token" element={<PublicShare />} />
-
-          <Route path="shared" element={<SharedFiles />} />
+          <Route path="/share/:token" element={<PublicShare />} />
 
           {/* Protected dashboard routes */}
           <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="files" element={<MyFiles />} />
-
+            <Route path="shared" element={<SharedFiles />} />
             <Route path="favorites" element={<Favorites />} />
             <Route path="trash" element={<Trash />} />
             <Route path="analytics" element={<StorageAnalytics />} />
