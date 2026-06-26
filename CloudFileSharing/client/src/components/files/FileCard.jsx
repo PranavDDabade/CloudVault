@@ -16,9 +16,25 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
 
   const fileIcon = getFileIcon(file);
 
+  const positionMenu = (x, y) => {
+    const menuWidth = 200;
+    const menuHeight = 280;
+    let newX = x;
+    let newY = y;
+
+    if (x + menuWidth > window.innerWidth) {
+      newX = window.innerWidth - menuWidth - 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      newY = window.innerHeight - menuHeight - 10;
+    }
+
+    setMenuPos({ x: Math.max(10, newX), y: Math.max(10, newY) });
+  };
+
   const handleContextMenu = (e) => {
     e.preventDefault();
-    setMenuPos({ x: e.clientX, y: e.clientY });
+    positionMenu(e.clientX, e.clientY);
     setShowMenu(true);
   };
 
@@ -162,7 +178,7 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
           </div>
           <motion.button
             whileHover={{ scale: 1.1, background: 'rgba(124,58,237,0.1)' }}
-            onClick={(e) => { e.stopPropagation(); setMenuPos({ x: e.clientX, y: e.clientY }); setShowMenu(true); }}
+            onClick={(e) => { e.stopPropagation(); positionMenu(e.clientX, e.clientY); setShowMenu(true); }}
             className="btn btn-ghost btn-sm" style={{ padding: '6px', borderRadius: '6px' }}
           >
             <MoreVertical size={14} />

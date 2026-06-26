@@ -52,7 +52,7 @@ const StorageAnalytics = () => {
       </div>
 
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gap-grid)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--gap-grid)', marginBottom: 'var(--gap-lg)' }}>
           {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (

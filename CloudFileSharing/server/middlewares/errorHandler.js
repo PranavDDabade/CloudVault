@@ -36,6 +36,12 @@ const errorHandler = (err, req, res, next) => {
     message = 'Token expired.';
   }
 
+  // AWS S3 Credentials missing or invalid
+  if (err.name === 'CredentialsProviderError' || err.message?.includes('Could not load credentials')) {
+    statusCode = 500;
+    message = 'AWS S3 credentials are missing or invalid. Please add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to your server/.env file.';
+  }
+
   // Log in development
   if (process.env.NODE_ENV === 'development') {
     console.error('Error:', err);

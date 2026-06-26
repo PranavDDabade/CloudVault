@@ -18,6 +18,22 @@ const FileList = ({
   const [menuFile, setMenuFile] = useState(null);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
+  const positionMenu = (x, y) => {
+    const menuWidth = 200;
+    const menuHeight = 280;
+    let newX = x;
+    let newY = y;
+
+    if (x + menuWidth > window.innerWidth) {
+      newX = window.innerWidth - menuWidth - 10;
+    }
+    if (y + menuHeight > window.innerHeight) {
+      newY = window.innerHeight - menuHeight - 10;
+    }
+
+    setMenuPos({ x: Math.max(10, newX), y: Math.max(10, newY) });
+  };
+
   const handleDownload = async (file) => {
     try {
       const { data } = await fileService.downloadFile(file._id);
@@ -67,7 +83,7 @@ const FileList = ({
               onDoubleClick={() => onPreview?.(file)}
               onContextMenu={(e) => {
                 e.preventDefault();
-                setMenuPos({ x: e.clientX, y: e.clientY });
+                positionMenu(e.clientX, e.clientY);
                 setMenuFile(file);
               }}
               style={{
@@ -121,7 +137,7 @@ const FileList = ({
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setMenuPos({ x: e.clientX, y: e.clientY });
+                  positionMenu(e.clientX, e.clientY);
                   setMenuFile(file);
                 }}
                 className="btn btn-ghost btn-sm"

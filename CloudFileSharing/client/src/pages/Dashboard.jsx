@@ -4,7 +4,7 @@ import {
   Files, HardDrive, Share2, Clock, Upload, FolderPlus, Star, TrendingUp
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { fileService } from '../services/fileService';
 import api from '../services/api';
 import StatsCard from '../components/dashboard/StatsCard';
@@ -24,6 +24,7 @@ const getGreeting = () => {
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { openUpload } = useOutletContext() || {};
   const [stats, setStats] = useState(null);
   const [recentFiles, setRecentFiles] = useState([]);
@@ -120,7 +121,7 @@ const Dashboard = () => {
       </div>
 
       {/* Charts + Quick Actions */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gap-grid)', marginBottom: 'var(--gap-lg)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--gap-grid)', marginBottom: 'var(--gap-lg)' }}>
         {/* Storage breakdown */}
         <motion.div
           className="card"
@@ -151,9 +152,9 @@ const Dashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
               { label: 'Upload Files', icon: Upload, gradient: 'linear-gradient(135deg, #7C5CFF, #8B5CF6)', action: openUpload },
-              { label: 'New Folder', icon: FolderPlus, gradient: 'linear-gradient(135deg, #34D399, #10B981)', action: () => {} },
-              { label: 'View Favorites', icon: Star, gradient: 'linear-gradient(135deg, #F59E0B, #EF4444)', action: () => {} },
-              { label: 'Shared with Me', icon: Share2, gradient: 'linear-gradient(135deg, #06B6D4, #2DD4BF)', action: () => {} },
+              { label: 'New Folder', icon: FolderPlus, gradient: 'linear-gradient(135deg, #34D399, #10B981)', action: () => navigate('/dashboard/files', { state: { openNewFolder: true } }) },
+              { label: 'View Favorites', icon: Star, gradient: 'linear-gradient(135deg, #F59E0B, #EF4444)', action: () => navigate('/dashboard/favorites') },
+              { label: 'Shared with Me', icon: Share2, gradient: 'linear-gradient(135deg, #06B6D4, #2DD4BF)', action: () => navigate('/dashboard/shared') },
             ].map(({ label, icon: Icon, gradient, action }) => (
               <motion.button
                 key={label}

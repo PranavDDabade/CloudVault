@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Grid3x3, List, FolderPlus, Upload, FolderOpen } from 'lucide-react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useLocation } from 'react-router-dom';
 import { useFiles } from '../hooks/useFiles';
 import { useDebounceValue } from '../hooks/useDebounce';
 import FileCard from '../components/files/FileCard';
@@ -27,6 +27,7 @@ const SORT_OPTIONS = [
 const MyFiles = () => {
   const { searchQuery, openUpload } = useOutletContext() || {};
   const debouncedSearch = useDebounceValue(searchQuery, 400);
+  const location = useLocation();
 
   const [viewMode, setViewMode] = useState('grid');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -35,6 +36,14 @@ const MyFiles = () => {
   const [renameFile, setRenameFile] = useState(null);
   const [newName, setNewName] = useState('');
   const [showNewFolder, setShowNewFolder] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.openNewFolder) {
+      setShowNewFolder(true);
+      // Clear location state to prevent re-opening on page reload
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
   const [newFolderName, setNewFolderName] = useState('');
   const [currentFolder, setCurrentFolder] = useState(null);
   const [filterType, setFilterType] = useState('');

@@ -93,8 +93,13 @@ exports.uploadAvatar = async (req, res, next) => {
     user.avatarKey = key;
     await user.save({ validateBeforeSave: false });
 
-    // Generate signed URL for immediate use in client
-    const signedAvatarUrl = await getSignedDownloadUrl(key, 86400);
+    // Generate signed URL for immediate use in client, fallback to raw url on failure
+    let signedAvatarUrl = url;
+    try {
+      signedAvatarUrl = await getSignedDownloadUrl(key, 86400);
+    } catch (err) {
+      console.error('Failed to pre-sign S3 URL for avatar:', err.message);
+    }
 
     await logActivity({
       user: req.user._id,

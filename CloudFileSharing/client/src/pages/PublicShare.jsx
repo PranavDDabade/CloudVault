@@ -143,7 +143,7 @@ function PublicShare() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Header Bar */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 32px', borderBottom: '1px solid var(--border)', background: 'var(--sidebar)', zIndex: 10 }}>
+      <header className="share-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Cloud size={24} style={{ color: 'var(--primary)' }} />
           <span style={{ fontSize: '18px', fontWeight: 800, background: 'linear-gradient(135deg, #7C5CFF, #5EEAD4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CloudVault</span>
@@ -155,11 +155,11 @@ function PublicShare() {
 
       {/* Main Share view */}
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: canPreview ? '1fr 360px' : '1fr', flex: 1, minHeight: 0 }}>
+        <div className={`share-grid ${canPreview ? 'has-preview' : ''}`} style={{ flex: 1, minHeight: 0 }}>
           
           {/* File Preview area */}
           {canPreview ? (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#000814', position: 'relative', overflow: 'hidden', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="share-preview">
               {isImage && (
                 <>
                   <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 20 }}>
@@ -209,7 +209,7 @@ function PublicShare() {
 
           {/* Info Details panel (Only shown if preview is active) */}
           {canPreview && (
-            <div style={{ borderLeft: '1px solid var(--border)', background: 'var(--sidebar)', padding: '32px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflowY: 'auto' }}>
+            <div className="share-details">
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 <div>
                   <h4 style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Shared File</h4>

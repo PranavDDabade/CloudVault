@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Cloud } from 'lucide-react';
 
@@ -150,6 +151,7 @@ export const Divider = ({ label }) => (
 
 // Avatar with gradient ring
 export const Avatar = ({ src, name, size = 36 }) => {
+  const [error, setError] = useState(false);
   const initials = name ? name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() : '?';
   return (
     <div style={{
@@ -158,7 +160,14 @@ export const Avatar = ({ src, name, size = 36 }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.35, fontWeight: 700, color: 'white', flexShrink: 0
     }}>
-      {src ? <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+      {src && !error ? (
+        <img 
+          src={src} 
+          alt={name} 
+          onError={() => setError(true)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        />
+      ) : initials}
     </div>
   );
 };

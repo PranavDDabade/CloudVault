@@ -121,7 +121,7 @@ fileSchema.pre('save', function (next) {
   if (this.originalName && !this.extension) {
     this.extension = this.originalName.split('.').pop().toLowerCase();
   }
-  if (this.mimeType && !this.fileType) {
+  if (this.mimeType && (!this.fileType || this.fileType === 'other')) {
     this.fileType = getFileType(this.mimeType);
   }
   next();
@@ -131,9 +131,9 @@ function getFileType(mimeType) {
   if (mimeType.startsWith('image/')) return 'image';
   if (mimeType.startsWith('video/')) return 'video';
   if (mimeType.startsWith('audio/')) return 'audio';
-  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text')) return 'document';
   if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'spreadsheet';
   if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'presentation';
+  if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text')) return 'document';
   if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('7z')) return 'archive';
   if (mimeType.includes('javascript') || mimeType.includes('json') || mimeType.includes('html') || mimeType.includes('css')) return 'code';
   return 'other';

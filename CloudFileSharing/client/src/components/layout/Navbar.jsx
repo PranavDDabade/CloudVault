@@ -40,7 +40,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
   return (
     <header style={{
       height: '68px', display: 'flex', alignItems: 'center',
-      padding: '0 32px', gap: '300px',
+      padding: '0 32px', gap: '16px',
       background: 'var(--navbar-bg)',
       backdropFilter: 'blur(24px)',
       borderBottom: '1px solid var(--border)',
@@ -51,7 +51,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
       </button>
 
       {/* Pill Search Bar matching Figma */}
-      <div className="relative flex-1 max-w-md left-65">
+      <div className="relative flex-1 max-w-md">
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none"
           style={{ color: 'var(--text-muted)' }} />
         <input

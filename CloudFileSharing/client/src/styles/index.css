@@ -740,3 +740,61 @@ h1, h2, h3, h4, h5, h6 {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* ── Public Share Page Responsiveness ────────────────────────────────────────── */
+.share-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--sidebar);
+  z-index: 10;
+}
+
+.share-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.share-preview {
+  display: flex;
+  flex-direction: column;
+  height: 50vh;
+  background: #000814;
+  position: relative;
+  overflow: hidden;
+  justify-content: center;
+  align-items: center;
+}
+
+.share-details {
+  border-top: 1px solid var(--border);
+  background: var(--sidebar);
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .share-header {
+    padding: 16px 32px;
+  }
+
+  .share-grid.has-preview {
+    grid-template-columns: 1fr 360px;
+  }
+
+  .share-preview {
+    height: 100%;
+  }
+
+  .share-details {
+    border-top: none;
+    border-left: 1px solid var(--border);
+    padding: 32px 24px;
+  }
+}
+

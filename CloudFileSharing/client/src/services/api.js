@@ -33,12 +33,19 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const message = error.response?.data?.message || error.message || 'Something went wrong';
-
     if (error.response?.status === 401) {
       localStorage.removeItem('cloudvault_token');
       delete api.defaults.headers.common['Authorization'];
-      // Only redirect if not already on auth page
-      if (!window.location.hash.startsWith('#/login') && !window.location.hash.startsWith('#/register')) {
+      
+      // Only redirect if not already on auth or public pages
+      const isPublicPath = 
+        window.location.hash.startsWith('#/login') ||
+        window.location.hash.startsWith('#/register') ||
+        window.location.hash.startsWith('#/share/') ||
+        window.location.hash.startsWith('#/reset-password') ||
+        window.location.hash.startsWith('#/forgot-password');
+
+      if (!isPublicPath) {
         window.location.href = '/#/login';
       }
     } else if (error.response?.status === 403) {
@@ -46,7 +53,7 @@ api.interceptors.response.use(
     } else if (error.response?.status === 413) {
       toast.error('File too large. Please check your storage limit.');
     } else if (error.response?.status >= 500) {
-      toast.error('Server error. Please try again later.');
+      toast.error(message || 'Server error. Please try again later.');
     }
 
     return Promise.reject({ ...error, message });

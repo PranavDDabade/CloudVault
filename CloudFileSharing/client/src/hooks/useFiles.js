@@ -10,6 +10,18 @@ export const useFiles = (initialParams = {}) => {
   const [params, setParams] = useState({ page: 1, limit: 20, ...initialParams });
   const abortRef = useRef(null);
 
+  // Sync internal params state with incoming initialParams changes
+  useEffect(() => {
+    setParams((prev) => ({
+      ...prev,
+      page: 1,
+      folderId: initialParams.folderId,
+      fileType: initialParams.fileType,
+      sort: initialParams.sort,
+      search: initialParams.search,
+    }));
+  }, [initialParams.folderId, initialParams.fileType, initialParams.sort, initialParams.search]);
+
   const fetchFiles = useCallback(async (queryParams = params) => {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();

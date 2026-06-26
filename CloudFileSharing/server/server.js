@@ -41,22 +41,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 10000 : (parseInt(process.env.RATE_LIMIT_MAX) || 100),
-  message: { success: false, message: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', limiter);
+// // Rate Limiting
+// const limiter = rateLimit({
+//   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+//   max: process.env.NODE_ENV === 'development' ? 10000 : (parseInt(process.env.RATE_LIMIT_MAX) || 100),
+//   message: { success: false, message: 'Too many requests, please try again later.' },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+// app.use('/api/', limiter);
 
-// Stricter limiter for auth routes
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: process.env.NODE_ENV === 'development' ? 1000 : 20,
-  message: { success: false, message: 'Too many authentication attempts.' },
-});
+// // Stricter limiter for auth routes
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: process.env.NODE_ENV === 'development' ? 1000 : 20,
+//   message: { success: false, message: 'Too many authentication attempts.' },
+// });
 
 // ── Body Parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
@@ -76,7 +76,7 @@ if (process.env.NODE_ENV === 'development') {
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── Routes ───────────────────────────────────────────────────────────────────
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/folders', folderRoutes);
@@ -129,6 +129,34 @@ const connectDB = async () => {
     }
     if (updatedCount > 0) {
       console.log(`✅ Migrated ${updatedCount} old share links to HashRouter format.`);
+    }
+
+    // Migrate existing files to set correct fileType
+    const File = require('./models/File');
+    const getFileType = (mimeType) => {
+      if (mimeType.startsWith('image/')) return 'image';
+      if (mimeType.startsWith('video/')) return 'video';
+      if (mimeType.startsWith('audio/')) return 'audio';
+      if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return 'spreadsheet';
+      if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return 'presentation';
+      if (mimeType.includes('pdf') || mimeType.includes('document') || mimeType.includes('text')) return 'document';
+      if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('7z')) return 'archive';
+      if (mimeType.includes('javascript') || mimeType.includes('json') || mimeType.includes('html') || mimeType.includes('css')) return 'code';
+      return 'other';
+    };
+
+    const allFiles = await File.find({});
+    let updatedFilesCount = 0;
+    for (const file of allFiles) {
+      const correctType = getFileType(file.mimeType);
+      if (file.fileType !== correctType) {
+        file.fileType = correctType;
+        await file.save({ validateBeforeSave: false });
+        updatedFilesCount++;
+      }
+    }
+    if (updatedFilesCount > 0) {
+      console.log(`✅ Migrated ${updatedFilesCount} files to their correct fileType.`);
     }
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);

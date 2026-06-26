@@ -8,25 +8,56 @@ const AnimatedValue = ({ value }) => {
   const inView = useInView(ref, { once: true });
 
   useEffect(() => {
-    if (!inView) return;
-    const num = parseInt(value);
+    if (!inView) {
+      setDisplay(value);
+      return;
+    }
+
+    const strValue = String(value);
+    const parts = strValue.trim().split(/\s+/);
+    
+    let num = NaN;
+    let unit = '';
+    let decimals = 0;
+
+    if (parts.length === 2) {
+      num = parseFloat(parts[0]);
+      unit = parts[1];
+      const decMatch = parts[0].match(/\.(\d+)/);
+      decimals = decMatch ? decMatch[1].length : 0;
+    } else if (parts.length === 1) {
+      num = parseFloat(parts[0]);
+      const decMatch = parts[0].match(/\.(\d+)/);
+      decimals = decMatch ? decMatch[1].length : 0;
+    }
+
     if (isNaN(num)) {
       setDisplay(value);
       return;
     }
+
     let start = 0;
     const duration = 800;
     const startTime = Date.now();
+
     const timer = setInterval(() => {
       const progress = Math.min((Date.now() - startTime) / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(start + (num - start) * eased));
-      if (progress >= 1) clearInterval(timer);
+      const current = start + (num - start) * eased;
+      
+      const formattedNum = current.toFixed(decimals);
+      setDisplay(unit ? `${formattedNum} ${unit}` : formattedNum);
+
+      if (progress >= 1) {
+        setDisplay(value);
+        clearInterval(timer);
+      }
     }, 16);
+
     return () => clearInterval(timer);
   }, [value, inView]);
 
-  return <span ref={ref}>{typeof value === 'string' && isNaN(parseInt(value)) ? value : display}</span>;
+  return <span ref={ref}>{display}</span>;
 };
 
 const StatsCard = ({ title, value, subtitle, icon: Icon, color, gradient, index = 0 }) => (
