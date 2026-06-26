@@ -93,8 +93,8 @@ exports.createShare = async (req, res, next) => {
         return res.status(200).json({ success: true, message: 'Shared with new email addresses.', share });
       }
 
-      // If no new emails to add, return conflict error or the existing share details
-      return res.status(409).json({ success: false, message: `This ${resourceType} already has an active share.`, share });
+      // If no new emails to add, return 200 OK with the existing share details
+      return res.status(200).json({ success: true, alreadyShared: true, message: `This ${resourceType} is already shared.`, share });
     }
 
     // Creating a brand new share

@@ -147,6 +147,7 @@ exports.getFile = async (req, res, next) => {
       .populate('folder', 'name path');
     if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
 
+    console.log([View Tracking] Incrementing view count for file: );
     file.viewCount += 1;
     await file.save();
 
