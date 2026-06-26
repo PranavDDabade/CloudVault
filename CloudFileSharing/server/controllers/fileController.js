@@ -143,10 +143,21 @@ exports.getFiles = async (req, res, next) => {
 // ── Get Single File ────────────────────────────────────────────────────────────
 exports.getFile = async (req, res, next) => {
   try {
-    const file = await File.findOne({ _id: req.params.id, owner: req.user._id })
+    const file = await File.findOne({ _id: req.params.id, isDeleted: false })
       .populate('folder', 'name path');
     if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
-console.log(`[View Tracking] Incrementing view count for file: ${file._id}`);
+
+    if (file.owner.toString() !== req.user._id.toString()) {
+      const SharedFile = require('../models/SharedFile');
+      const share = await SharedFile.findOne({
+        file: file._id,
+        'sharedWith.user': req.user._id,
+        isActive: true
+      });
+      if (!share) return res.status(404).json({ success: false, message: 'File not found.' });
+    }
+
+    
     file.viewCount += 1;
     await file.save();
 
@@ -158,33 +169,86 @@ console.log(`[View Tracking] Incrementing view count for file: ${file._id}`);
     next(error);
   }
 };
-
 // ── Download File ──────────────────────────────────────────────────────────────
 exports.downloadFile = async (req, res, next) => {
   try {
-    const file = await File.findOne({ _id: req.params.id, owner: req.user._id });
-    if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
+    console.log("========== DOWNLOAD REQUEST ==========");
+    console.log("File ID:", req.params.id);
+    console.log("User ID:", req.user?._id);
 
-    const signedUrl = await getSignedDownloadUrl(file.key, 300, file.name); // 5 min expiry
+    // Validate MongoDB ObjectId
+    if (!require("mongoose").Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid file ID.",
+      });
+    }
+
+    const file = await File.findOne({
+      _id: req.params.id,
+      isDeleted: false,
+    });
+
+    if (!file) {
+      console.log("File not found in database.");
+      return res.status(404).json({
+        success: false,
+        message: "File not found.",
+      });
+    }
+
+    if (file.owner.toString() !== req.user._id.toString()) {
+      const SharedFile = require('../models/SharedFile');
+      const share = await SharedFile.findOne({
+        file: file._id,
+        'sharedWith.user': req.user._id,
+        isActive: true
+      });
+      
+      if (!share) {
+        console.log("File not shared with user.");
+        return res.status(404).json({ success: false, message: "File not found." });
+      }
+      if (!share.permissions.canDownload) {
+        return res.status(403).json({ success: false, message: "Download not permitted." });
+      }
+    }
+
+    console.log("File found:");
+    console.log({
+      id: file._id,
+      name: file.name,
+      owner: file.owner,
+      key: file.key,
+    });
+
+    const signedUrl = await getSignedDownloadUrl(
+      file.key,
+      300,
+      file.originalName || file.name
+    );
 
     file.downloadCount += 1;
     await file.save();
 
     await logActivity({
       user: req.user._id,
-      action: 'download',
-      resourceType: 'file',
+      action: "download",
+      resourceType: "file",
       resourceId: file._id,
       resourceName: file.name,
       ip: req.ip,
     });
 
-    res.status(200).json({ success: true, downloadUrl: signedUrl });
+    return res.status(200).json({
+      success: true,
+      downloadUrl: signedUrl,
+    });
   } catch (error) {
+    console.error("Download Error:", error);
     next(error);
   }
 };
-
 // ── Update File (rename, move, tags, color) ────────────────────────────────────
 exports.updateFile = async (req, res, next) => {
   try {
