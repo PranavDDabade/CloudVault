@@ -152,9 +152,17 @@ const ShareModal = ({ file, isOpen, onClose }) => {
                 className="input" style={{ fontSize: '13px' }} />
             )}
 
-            <button className="btn btn-primary" onClick={createShare} disabled={loading}>
-              {loading ? 'Creating...' : <><Globe size={15} /> Create Share Link</>}
-            </button>
+             <button className="btn btn-primary" onClick={createShare} disabled={loading}>
+               {loading ? (
+                 tab === 'email' ? 'Sharing...' : 'Creating...'
+               ) : (
+                 tab === 'email' ? (
+                   <><Mail size={15} /> Share via Email</>
+                 ) : (
+                   <><Globe size={15} /> Create Share Link</>
+                 )
+               )}
+             </button>
           </div>
         )}
 

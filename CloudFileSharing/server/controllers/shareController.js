@@ -6,7 +6,7 @@ const { getSignedDownloadUrl } = require('../services/s3Service');
 const { logActivity, createNotification } = require('../utils/helpers');
 const { sendShareNotificationEmail } = require('../utils/sendEmail');
 
-// ── Create Share Link ─────────────────────────────────────────────────────────
+// ── Create Share Link / Share by Email ─────────────────────────────────────────
 exports.createShare = async (req, res, next) => {
   try {
     const { fileId, isPublic, permissions, expiresAt, password, emails } = req.body;
@@ -15,17 +15,80 @@ exports.createShare = async (req, res, next) => {
     if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
 
     // Check if already shared
-    const existingShare = await SharedFile.findOne({ file: fileId, sharedBy: req.user._id });
-    if (existingShare) {
-      return res.status(409).json({ success: false, message: 'File already has a share link.', share: existingShare });
+    let share = await SharedFile.findOne({ file: fileId, sharedBy: req.user._id });
+
+    const sharedWith = [];
+    const targetUsers = [];
+
+    // Parse emails to resolve registered users
+    if (emails && emails.length > 0) {
+      for (const email of emails) {
+        const lowerEmail = email.toLowerCase().trim();
+        if (!lowerEmail) continue;
+
+        // If updating existing share, check if already shared with this email
+        if (share && share.sharedWith.some(sw => sw.email.toLowerCase() === lowerEmail)) {
+          continue;
+        }
+
+        const user = await User.findOne({ email: lowerEmail });
+        const sharedEntry = { email: lowerEmail };
+        if (user) {
+          sharedEntry.user = user._id;
+          sharedEntry.acceptedAt = new Date();
+          targetUsers.push(user);
+        }
+        sharedWith.push(sharedEntry);
+      }
     }
 
+    if (share) {
+      // If we have an existing share and new emails are being added
+      if (sharedWith.length > 0) {
+        share.sharedWith.push(...sharedWith);
+        
+        // If password/expiry is updated, we can also update it
+        if (password) {
+          const salt = await bcrypt.genSalt(10);
+          share.password = await bcrypt.hash(password, salt);
+          share.hasPassword = true;
+        }
+        if (expiresAt !== undefined) share.expiresAt = expiresAt ? new Date(expiresAt) : null;
+        
+        await share.save();
+
+        // Send email invitations for new emails
+        const emailPromises = sharedWith.map((sw) =>
+          sendShareNotificationEmail(sw.email, req.user.name, file.name, share.publicLink).catch(console.error)
+        );
+        await Promise.allSettled(emailPromises);
+
+        // Send database notifications to registered users
+        for (const targetUser of targetUsers) {
+          await createNotification({
+            user: targetUser._id,
+            type: 'file_shared',
+            title: 'File Shared with You',
+            message: `"${req.user.name}" shared the file "${file.name}" with you.`,
+            metadata: { fileId: file._id, shareId: share._id },
+          });
+        }
+
+        return res.status(200).json({ success: true, message: 'Shared with new email addresses.', share });
+      }
+
+      // If no new emails to add, return conflict error or the existing share details
+      return res.status(409).json({ success: false, message: 'File already has an active share.', share });
+    }
+
+    // Creating a brand new share
     const shareData = {
       file: fileId,
       sharedBy: req.user._id,
       isPublic: isPublic !== false,
       permissions: permissions || { canView: true, canDownload: true, canEdit: false },
       expiresAt: expiresAt ? new Date(expiresAt) : null,
+      sharedWith,
     };
 
     if (password) {
@@ -34,18 +97,29 @@ exports.createShare = async (req, res, next) => {
       shareData.hasPassword = true;
     }
 
-    const share = await SharedFile.create(shareData);
+    share = await SharedFile.create(shareData);
 
     file.isShared = true;
     file.shareCount += 1;
     await file.save();
 
     // Send email invitations
-    if (emails && emails.length > 0) {
-      const emailPromises = emails.map((email) =>
-        sendShareNotificationEmail(email, req.user.name, file.name, share.publicLink).catch(console.error)
+    if (sharedWith.length > 0) {
+      const emailPromises = sharedWith.map((sw) =>
+        sendShareNotificationEmail(sw.email, req.user.name, file.name, share.publicLink).catch(console.error)
       );
       await Promise.allSettled(emailPromises);
+    }
+
+    // Send database notifications to registered users
+    for (const targetUser of targetUsers) {
+      await createNotification({
+        user: targetUser._id,
+        type: 'file_shared',
+        title: 'File Shared with You',
+        message: `"${req.user.name}" shared the file "${file.name}" with you.`,
+        metadata: { fileId: file._id, shareId: share._id },
+      });
     }
 
     await logActivity({ user: req.user._id, action: 'share', resourceType: 'share', resourceId: share._id, resourceName: file.name, ip: req.ip });
