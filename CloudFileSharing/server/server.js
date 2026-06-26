@@ -116,8 +116,14 @@ const connectDB = async () => {
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-
-
+    // Automatically rebuild indexes for the User model to prevent conflicts
+    try {
+      const User = require('./models/User');
+      await User.syncIndexes();
+      console.log('✅ User indexes synchronized successfully.');
+    } catch (indexErr) {
+      console.error('⚠️ Error synchronizing User indexes:', indexErr.message);
+    }
     // Migrate existing files to set correct fileType
     const File = require('./models/File');
     const getFileType = (mimeType) => {

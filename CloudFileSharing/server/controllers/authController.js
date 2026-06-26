@@ -7,10 +7,36 @@ const { logActivity } = require('../utils/helpers');
 // ── Register ──────────────────────────────────────────────────────────────────
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    let { name, email, password } = req.body;
 
-    const existing = await User.findOne({ email });
+    console.log('[Register] Incoming Body:', req.body);
+    console.log('[Register] Incoming email:', email);
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide name, email, and password.' });
+    }
+
+    // Normalize email
+    email = email.toString().toLowerCase().trim();
+    
+    console.log('[Register] Normalized email:', email);
+    
+    // Check MongoDB connection info
+    const dbName = mongoose.connection.name;
+    const dbHost = mongoose.connection.host;
+    const collectionName = User.collection.collectionName;
+    
+    console.log(`[Register] DB Info: host=${dbHost}, name=${dbName}, collection=${collectionName}`);
+
+    // Query for existing user
+    const query = { email };
+    console.log('[Register] Querying with:', JSON.stringify(query));
+    
+    const existing = await User.findOne(query);
+    console.log('[Register] Result of User.findOne():', existing ? `Found user _id: ${existing._id}, email: ${existing.email}` : 'null');
+
     if (existing) {
+      console.log('[Register] Conflict! Found duplicate document:', existing);
       return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
     }
 
@@ -44,7 +70,13 @@ exports.register = async (req, res, next) => {
 // ── Login ─────────────────────────────────────────────────────────────────────
 exports.login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide email and password.' });
+    }
+
+    email = email.toString().toLowerCase().trim();
 
     const user = await User.findOne({ email }).select('+password');
     if (!user || !(await user.comparePassword(password))) {
@@ -135,7 +167,15 @@ exports.resendVerification = async (req, res, next) => {
 // ── Forgot Password ───────────────────────────────────────────────────────────
 exports.forgotPassword = async (req, res, next) => {
   try {
-    const user = await User.findOne({ email: req.body.email });
+    let { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Please provide an email.' });
+    }
+    
+    email = email.toString().toLowerCase().trim();
+
+    const user = await User.findOne({ email });
 
     // Always respond with 200 to prevent email enumeration
     if (!user) {
