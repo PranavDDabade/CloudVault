@@ -146,8 +146,7 @@ exports.getFile = async (req, res, next) => {
     const file = await File.findOne({ _id: req.params.id, owner: req.user._id })
       .populate('folder', 'name path');
     if (!file) return res.status(404).json({ success: false, message: 'File not found.' });
-
-    console.log([View Tracking] Incrementing view count for file: );
+console.log(`[View Tracking] Incrementing view count for file: ${file._id}`);
     file.viewCount += 1;
     await file.save();
 
