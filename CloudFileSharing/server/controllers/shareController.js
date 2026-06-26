@@ -142,7 +142,7 @@ exports.createShare = async (req, res, next) => {
 exports.getShareByToken = async (req, res, next) => {
   try {
     const share = await SharedFile.findOne({ linkToken: req.params.token, isActive: true })
-      .populate('file', 'name mimeType size fileType extension')
+      .populate('file', 'name mimeType size fileType extension key')
       .populate('sharedBy', 'name avatar');
 
     if (!share) return res.status(404).json({ success: false, message: 'Share link not found or has been disabled.' });
@@ -165,7 +165,12 @@ exports.getShareByToken = async (req, res, next) => {
     share.lastAccessedAt = new Date();
     await share.save();
 
-    res.status(200).json({ success: true, share });
+    const shareObj = share.toObject();
+    if (shareObj.file) {
+      shareObj.file.previewUrl = await getSignedDownloadUrl(shareObj.file.key, 3600);
+    }
+
+    res.status(200).json({ success: true, share: shareObj });
   } catch (error) {
     next(error);
   }
@@ -206,9 +211,20 @@ exports.downloadViaShare = async (req, res, next) => {
 exports.getMyShares = async (req, res, next) => {
   try {
     const shares = await SharedFile.find({ sharedBy: req.user._id })
-      .populate('file', 'name mimeType size fileType')
-      .sort('-createdAt');
-    res.status(200).json({ success: true, shares });
+      .populate('file', 'name mimeType size fileType key')
+      .sort('-createdAt')
+      .lean();
+
+    const sharesWithUrls = await Promise.all(
+      shares.map(async (share) => {
+        if (share.file) {
+          share.file.previewUrl = await getSignedDownloadUrl(share.file.key, 3600);
+        }
+        return share;
+      })
+    );
+
+    res.status(200).json({ success: true, shares: sharesWithUrls });
   } catch (error) {
     next(error);
   }
@@ -221,10 +237,21 @@ exports.getSharedWithMe = async (req, res, next) => {
       'sharedWith.user': req.user._id,
       isActive: true,
     })
-      .populate('file', 'name mimeType size fileType')
+      .populate('file', 'name mimeType size fileType key')
       .populate('sharedBy', 'name avatar')
-      .sort('-createdAt');
-    res.status(200).json({ success: true, shares });
+      .sort('-createdAt')
+      .lean();
+
+    const sharesWithUrls = await Promise.all(
+      shares.map(async (share) => {
+        if (share.file) {
+          share.file.previewUrl = await getSignedDownloadUrl(share.file.key, 3600);
+        }
+        return share;
+      })
+    );
+
+    res.status(200).json({ success: true, shares: sharesWithUrls });
   } catch (error) {
     next(error);
   }

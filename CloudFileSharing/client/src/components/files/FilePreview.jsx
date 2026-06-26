@@ -115,25 +115,25 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
             <div style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px', background: '#000a14' }}>
               {isImage && (
                 <img
-                  src={file.url}
+                  src={file.previewUrl}
                   alt={file.name}
                   style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transform: `scale(${zoom})`, transition: 'transform 0.2s' }}
                 />
               )}
               {isVideo && (
                 <video controls style={{ maxWidth: '100%', maxHeight: '70vh' }}>
-                  <source src={file.url} type={file.mimeType} />
+                  <source src={file.previewUrl} type={file.mimeType} />
                 </video>
               )}
               {isAudio && (
                 <div style={{ padding: '40px', textAlign: 'center' }}>
                   <div style={{ fontSize: '60px', marginBottom: '24px' }}>🎵</div>
                   <p style={{ color: 'var(--text)', marginBottom: '16px', fontWeight: 600 }}>{file.name}</p>
-                  <audio controls src={file.url} style={{ width: '100%', maxWidth: '400px' }} />
+                  <audio controls src={file.previewUrl} style={{ width: '100%', maxWidth: '400px' }} />
                 </div>
               )}
               {isPdf && (
-                <iframe src={file.url} style={{ width: '100%', height: '70vh', border: 'none' }} title={file.name} />
+                <iframe src={file.previewUrl} style={{ width: '100%', height: '70vh', border: 'none' }} title={file.name} />
               )}
               {!canPreview && (
                 <div style={{ textAlign: 'center', padding: '60px 24px' }}>

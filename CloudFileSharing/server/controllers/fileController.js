@@ -76,7 +76,15 @@ exports.uploadFiles = async (req, res, next) => {
       metadata: { fileId: uploadedFiles[0]?._id },
     });
 
-    res.status(201).json({ success: true, message: 'Files uploaded successfully.', files: uploadedFiles });
+    const filesWithUrls = await Promise.all(
+      uploadedFiles.map(async (file) => {
+        const fileObj = file.toObject();
+        fileObj.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+        return fileObj;
+      })
+    );
+
+    res.status(201).json({ success: true, message: 'Files uploaded successfully.', files: filesWithUrls });
   } catch (error) {
     next(error);
   }
@@ -115,9 +123,16 @@ exports.getFiles = async (req, res, next) => {
       .limit(limitNum)
       .lean();
 
+    const filesWithUrls = await Promise.all(
+      files.map(async (file) => {
+        file.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+        return file;
+      })
+    );
+
     res.status(200).json({
       success: true,
-      files,
+      files: filesWithUrls,
       pagination: getPaginationMeta(total, parseInt(page), limitNum),
     });
   } catch (error) {
@@ -135,7 +150,10 @@ exports.getFile = async (req, res, next) => {
     file.viewCount += 1;
     await file.save();
 
-    res.status(200).json({ success: true, file });
+    const fileObj = file.toObject();
+    fileObj.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+
+    res.status(200).json({ success: true, file: fileObj });
   } catch (error) {
     next(error);
   }
@@ -193,7 +211,10 @@ exports.updateFile = async (req, res, next) => {
       ip: req.ip,
     });
 
-    res.status(200).json({ success: true, message: 'File updated.', file });
+    const fileObj = file.toObject();
+    fileObj.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+
+    res.status(200).json({ success: true, message: 'File updated.', file: fileObj });
   } catch (error) {
     next(error);
   }
@@ -236,7 +257,10 @@ exports.restoreFile = async (req, res, next) => {
 
     await logActivity({ user: req.user._id, action: 'restore', resourceType: 'file', resourceId: file._id, resourceName: file.name, ip: req.ip });
 
-    res.status(200).json({ success: true, message: 'File restored.', file });
+    const fileObj = file.toObject();
+    fileObj.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+
+    res.status(200).json({ success: true, message: 'File restored.', file: fileObj });
   } catch (error) {
     next(error);
   }
@@ -271,9 +295,16 @@ exports.getTrash = async (req, res, next) => {
     const { skip, limit: limitNum } = paginate({}, page, limit);
     const query = { owner: req.user._id, isDeleted: true };
     const total = await File.countDocuments(query);
-    const files = await File.find(query).sort('-deletedAt').skip(skip).limit(limitNum);
+    const files = await File.find(query).sort('-deletedAt').skip(skip).limit(limitNum).lean();
 
-    res.status(200).json({ success: true, files, pagination: getPaginationMeta(total, parseInt(page), limitNum) });
+    const filesWithUrls = await Promise.all(
+      files.map(async (file) => {
+        file.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+        return file;
+      })
+    );
+
+    res.status(200).json({ success: true, files: filesWithUrls, pagination: getPaginationMeta(total, parseInt(page), limitNum) });
   } catch (error) {
     next(error);
   }
@@ -326,7 +357,10 @@ exports.duplicateFile = async (req, res, next) => {
 
     await logActivity({ user: req.user._id, action: 'copy', resourceType: 'file', resourceId: file._id, resourceName: file.name, ip: req.ip });
 
-    res.status(201).json({ success: true, message: 'File duplicated.', file: duplicatedFile });
+    const fileObj = duplicatedFile.toObject();
+    fileObj.previewUrl = await getSignedDownloadUrl(duplicatedFile.key, 3600);
+
+    res.status(201).json({ success: true, message: 'File duplicated.', file: fileObj });
   } catch (error) {
     next(error);
   }
@@ -339,7 +373,14 @@ exports.getRecentFiles = async (req, res, next) => {
       .sort('-createdAt')
       .limit(10)
       .lean();
-    res.status(200).json({ success: true, files });
+    const filesWithUrls = await Promise.all(
+      files.map(async (file) => {
+        file.previewUrl = await getSignedDownloadUrl(file.key, 3600);
+        return file;
+      })
+    );
+
+    res.status(200).json({ success: true, files: filesWithUrls });
   } catch (error) {
     next(error);
   }

@@ -91,7 +91,7 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
           {/* Absolute overlay preview elements */}
           {isImage && (
             <img
-              src={file.url}
+              src={file.previewUrl}
               alt={file.name}
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               loading="lazy"
@@ -100,7 +100,7 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
           )}
           {isVideo && (
             <video
-              src={file.url}
+              src={file.previewUrl}
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               muted
               preload="metadata"
@@ -109,7 +109,7 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
           )}
           {isPdf && (
             <iframe
-              src={`${file.url}#toolbar=0&navpanes=0&scrollbar=0`}
+              src={`${file.previewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none', pointerEvents: 'none' }}
               scrolling="no"
             />
