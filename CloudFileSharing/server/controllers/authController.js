@@ -19,24 +19,8 @@ exports.register = async (req, res, next) => {
     // Normalize email
     email = email.toString().toLowerCase().trim();
     
-    console.log('[Register] Normalized email:', email);
-    
-    // Check MongoDB connection info
-    const dbName = mongoose.connection.name;
-    const dbHost = mongoose.connection.host;
-    const collectionName = User.collection.collectionName;
-    
-    console.log(`[Register] DB Info: host=${dbHost}, name=${dbName}, collection=${collectionName}`);
-
-    // Query for existing user
-    const query = { email };
-    console.log('[Register] Querying with:', JSON.stringify(query));
-    
-    const existing = await User.findOne(query);
-    console.log('[Register] Result of User.findOne():', existing ? `Found user _id: ${existing._id}, email: ${existing.email}` : 'null');
-
+    const existing = await User.findOne({ email });
     if (existing) {
-      console.log('[Register] Conflict! Found duplicate document:', existing);
       return res.status(409).json({ success: false, message: 'An account with this email already exists.' });
     }
 
