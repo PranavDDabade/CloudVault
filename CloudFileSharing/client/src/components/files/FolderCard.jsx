@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Folder, MoreVertical, Edit2, Trash2, FolderInput, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -158,4 +158,4 @@ const FolderCard = ({
   );
 };
 
-export default FolderCard;
+export default memo(FolderCard);

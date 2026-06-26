@@ -8,8 +8,8 @@ import DashboardLayout from './components/layout/DashboardLayout';
 const PublicShare = lazy(() => import('./pages/PublicShare'));
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
-const Landing         = lazy(() => import('./pages/Landing'));
-const Login           = lazy(() => import('./pages/Login'));
+import Landing from './pages/Landing';
+import Login from './pages/Login';
 const Register        = lazy(() => import('./pages/Register'));
 const ForgotPassword  = lazy(() => import('./pages/ForgotPassword'));
 const ResetPassword   = lazy(() => import('./pages/ResetPassword'));

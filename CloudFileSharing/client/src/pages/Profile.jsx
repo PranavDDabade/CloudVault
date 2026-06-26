@@ -75,10 +75,10 @@ const Profile = () => {
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <motion.div style={{ marginBottom: 'var(--gap-lg)' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div style={{ marginBottom: 'var(--gap-lg)' }}>
         <h1 className="text-page-title" style={{ marginBottom: '8px' }}>Account Settings</h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Configure your personal preferences, details, and security parameters.</p>
-      </motion.div>
+      </div>
 
       {/* Sidebar Layout for Settings pages */}
       <div style={{ display: 'flex', gap: 'var(--gap-lg)', alignItems: 'flex-start', flexWrap: 'wrap' }}>

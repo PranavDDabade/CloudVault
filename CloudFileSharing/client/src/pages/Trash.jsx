@@ -71,8 +71,7 @@ const Trash = () => {
 
   return (
     <div>
-      <motion.div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--gap-lg)', flexWrap: 'wrap', gap: '16px' }}
-        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--gap-lg)', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -89,7 +88,7 @@ const Trash = () => {
             <TrashIcon size={14} /> Empty Trash
           </button>
         )}
-      </motion.div>
+      </div>
 
       {/* Warning banner */}
       {items.length > 0 && (

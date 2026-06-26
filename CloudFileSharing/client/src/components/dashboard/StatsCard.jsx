@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, memo } from 'react';
 import { motion, useInView } from 'framer-motion';
 
 // Animated number counter
@@ -130,4 +130,4 @@ const StatsCard = ({ title, value, subtitle, icon: Icon, color, gradient, index 
   </motion.div>
 );
 
-export default StatsCard;
+export default memo(StatsCard);

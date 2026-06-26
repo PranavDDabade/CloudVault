@@ -49,8 +49,7 @@ const Admin = () => {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       {/* Page Header */}
-      <motion.div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: 'var(--gap-lg)' }}
-        initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: 'var(--gap-lg)' }}>
         <div style={{
           width: '40px', height: '40px', borderRadius: '12px',
           background: 'rgba(239, 68, 68, 0.1)',
@@ -62,7 +61,7 @@ const Admin = () => {
           <h1 className="text-page-title">Admin Panel</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>Platform management, user accounts control, and analytics</p>
         </div>
-      </motion.div>
+      </div>
 
       {/* Tabs */}
       <div style={{

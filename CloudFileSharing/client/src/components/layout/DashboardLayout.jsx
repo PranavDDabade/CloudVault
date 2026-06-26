@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense, lazy } from 'react';
 import { Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
-import UploadModal from '../files/UploadModal';
+const UploadModal = lazy(() => import('../files/UploadModal'));
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -46,12 +46,16 @@ const DashboardLayout = () => {
       </div>
 
       {/* Upload Modal */}
-      <UploadModal
-        isOpen={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        folderId={currentFolder}
-        onSuccess={() => setUploadSuccessTrigger(prev => prev + 1)}
-      />
+      {uploadOpen && (
+        <Suspense fallback={null}>
+          <UploadModal
+            isOpen={uploadOpen}
+            onClose={() => setUploadOpen(false)}
+            folderId={currentFolder}
+            onSuccess={() => setUploadSuccessTrigger(prev => prev + 1)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

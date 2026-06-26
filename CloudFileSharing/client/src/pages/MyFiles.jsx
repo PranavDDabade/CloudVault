@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, Suspense, lazy, startTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Grid3x3, List, FolderPlus, Upload, FolderOpen, Home, ChevronRight } from 'lucide-react';
 import { useOutletContext, useLocation } from 'react-router-dom';
@@ -6,10 +6,10 @@ import { useFiles } from '../hooks/useFiles';
 import { useDebounceValue } from '../hooks/useDebounce';
 import FileCard from '../components/files/FileCard';
 import FileList from '../components/files/FileList';
-import FilePreview from '../components/files/FilePreview';
 import FolderCard from '../components/files/FolderCard';
-import MoveModal from '../components/files/MoveModal';
-import ShareModal from '../components/sharing/ShareModal';
+const FilePreview = lazy(() => import('../components/files/FilePreview'));
+const MoveModal = lazy(() => import('../components/files/MoveModal'));
+const ShareModal = lazy(() => import('../components/sharing/ShareModal'));
 import Modal from '../components/ui/Modal';
 import { EmptyState, SkeletonCard } from '../components/ui/index.jsx';
 import { fileService } from '../services/fileService';
@@ -108,11 +108,11 @@ const MyFiles = () => {
     fetchFiles();
   }, [uploadSuccessTrigger]);
 
-  const handleSelect = (id) => {
+  const handleSelect = useCallback((id) => {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
-  };
+  }, []);
 
   const handleRenameSubmit = async () => {
     if (!newName.trim() || !renameItem) return;
@@ -144,7 +144,7 @@ const MyFiles = () => {
     }
   };
 
-  const handleToggleFavoriteFolder = async (id, isFavorite) => {
+  const handleToggleFavoriteFolder = useCallback(async (id, isFavorite) => {
     try {
       const { data } = await folderService.updateFolder(id, { isFavorite });
       setFolders(prev => prev.map(f => f._id === id ? { ...f, isFavorite: data.folder.isFavorite } : f));
@@ -152,9 +152,9 @@ const MyFiles = () => {
     } catch {
       toast.error('Failed to update favorite');
     }
-  };
+  }, []);
 
-  const handleDeleteFolder = async (id) => {
+  const handleDeleteFolder = useCallback(async (id) => {
     try {
       await folderService.deleteFolder(id);
       setFolders(prev => prev.filter(f => f._id !== id));
@@ -162,9 +162,9 @@ const MyFiles = () => {
     } catch {
       toast.error('Failed to delete folder');
     }
-  };
+  }, []);
 
-  const handleMoveItem = async (item, destFolderId) => {
+  const handleMoveItem = useCallback(async (item, destFolderId) => {
     try {
       if (item.isFolder) {
         await folderService.updateFolder(item._id, { parentId: destFolderId });
@@ -176,9 +176,9 @@ const MyFiles = () => {
     } catch (err) {
       throw err;
     }
-  };
+  }, [fetchFiles]);
 
-  const handleDuplicate = async (id) => {
+  const handleDuplicate = useCallback(async (id) => {
     try {
       const { data } = await fileService.duplicateFile(id);
       addFiles([data.file]);
@@ -186,7 +186,17 @@ const MyFiles = () => {
     } catch {
       toast.error('Duplication failed.');
     }
-  };
+  }, [addFiles]);
+
+  const handleRenameFolder = useCallback((f) => {
+    setRenameItem({ ...f, isFolder: true });
+    setNewName(f.name);
+  }, []);
+
+  const handleRenameFile = useCallback((f) => {
+    setRenameItem(f);
+    setNewName(f.name);
+  }, []);
 
   const totalItemsCount = folders.length + files.length;
   const isLoading = foldersLoading || filesLoading;
@@ -194,11 +204,8 @@ const MyFiles = () => {
   return (
     <div>
       {/* Header */}
-      <motion.div
+      <div
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--gap-lg)', flexWrap: 'wrap', gap: '16px' }}
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
       >
         <div>
           <h1 className="text-page-title" style={{ marginBottom: '4px' }}>My Files</h1>
@@ -226,7 +233,7 @@ const MyFiles = () => {
             <Upload size={16} /> Upload
           </motion.button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Breadcrumbs Navigation */}
       <div style={{
@@ -284,7 +291,7 @@ const MyFiles = () => {
         {/* File type filter */}
         <select
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
+          onChange={(e) => startTransition(() => setFilterType(e.target.value))}
           className="input"
           style={{ width: 'auto', height: '40px', fontSize: '14px', paddingRight: '36px', borderRadius: '12px' }}
         >
@@ -296,7 +303,7 @@ const MyFiles = () => {
         {/* Sort */}
         <select
           value={sort}
-          onChange={(e) => setSort(e.target.value)}
+          onChange={(e) => startTransition(() => setSort(e.target.value))}
           className="input"
           style={{ width: 'auto', height: '40px', fontSize: '14px', borderRadius: '12px' }}
         >
@@ -310,7 +317,7 @@ const MyFiles = () => {
           {[{ mode: 'grid', Icon: Grid3x3 }, { mode: 'list', Icon: List }].map(({ mode, Icon }) => (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              onClick={() => startTransition(() => setViewMode(mode))}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -363,7 +370,7 @@ const MyFiles = () => {
                     folder={folder}
                     onOpen={setCurrentFolder}
                     onDelete={handleDeleteFolder}
-                    onRename={(f) => { setRenameItem({ ...f, isFolder: true }); setNewName(f.name); }}
+                    onRename={handleRenameFolder}
                     onMove={setMoveItem}
                     onToggleFavorite={handleToggleFavoriteFolder}
                   />
@@ -377,28 +384,23 @@ const MyFiles = () => {
             <div>
               <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>Files</h2>
               {viewMode === 'grid' ? (
-                <motion.div
-                  layout
-                  style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}
-                >
-                  <AnimatePresence>
-                    {files.map(file => (
-                      <FileCard
-                        key={file._id}
-                        file={file}
-                        selected={selectedIds.includes(file._id)}
-                        onSelect={handleSelect}
-                        onPreview={setPreviewFile}
-                        onShare={setShareFile}
-                        onToggleFavorite={toggleFavorite}
-                        onDelete={deleteFile}
-                        onRename={(f) => { setRenameItem(f); setNewName(f.name); }}
-                        onDuplicate={handleDuplicate}
-                        onMove={setMoveItem}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>
+                  {files.map(file => (
+                    <FileCard
+                      key={file._id}
+                      file={file}
+                      selected={selectedIds.includes(file._id)}
+                      onSelect={handleSelect}
+                      onPreview={setPreviewFile}
+                      onShare={setShareFile}
+                      onToggleFavorite={toggleFavorite}
+                      onDelete={deleteFile}
+                      onRename={handleRenameFile}
+                      onDuplicate={handleDuplicate}
+                      onMove={setMoveItem}
+                    />
+                  ))}
+                </div>
               ) : (
                 <div className="table-container">
                   <FileList
@@ -409,7 +411,7 @@ const MyFiles = () => {
                     onShare={setShareFile}
                     onToggleFavorite={toggleFavorite}
                     onDelete={deleteFile}
-                    onRename={(f) => { setRenameItem(f); setNewName(f.name); }}
+                    onRename={handleRenameFile}
                     onDuplicate={handleDuplicate}
                     onMove={setMoveItem}
                   />
@@ -457,17 +459,29 @@ const MyFiles = () => {
       </Modal>
 
       {/* Move Destination Modal */}
-      <MoveModal
-        isOpen={!!moveItem}
-        onClose={() => setMoveItem(null)}
-        item={moveItem}
-        onMove={handleMoveItem}
-      />
+      {!!moveItem && (
+        <Suspense fallback={null}>
+          <MoveModal
+            isOpen={!!moveItem}
+            onClose={() => setMoveItem(null)}
+            item={moveItem}
+            onMove={handleMoveItem}
+          />
+        </Suspense>
+      )}
 
       {/* Preview & Share */}
-      <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
-        onToggleFavorite={toggleFavorite} onShare={setShareFile} />
-      <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+      {!!previewFile && (
+        <Suspense fallback={null}>
+          <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
+            onToggleFavorite={toggleFavorite} onShare={setShareFile} />
+        </Suspense>
+      )}
+      {!!shareFile && (
+        <Suspense fallback={null}>
+          <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+        </Suspense>
+      )}
     </div>
   );
 };

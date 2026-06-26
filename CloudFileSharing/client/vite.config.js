@@ -29,16 +29,22 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'vendor';
+            if (id.includes('react/') || id.includes('react-dom/')) {
+              return 'react-core';
             }
-            if (id.includes('framer-motion') || id.includes('lucide-react')) {
-              return 'ui';
+            if (id.includes('react-router')) {
+              return 'react-router';
+            }
+            if (id.includes('framer-motion')) {
+              return 'ui-framer';
+            }
+            if (id.includes('lucide-react')) {
+              return 'ui-icons';
             }
             if (id.includes('recharts')) {
               return 'charts';
             }
-            return 'vendor-libs';
+            return 'vendor';
           }
         },
       },

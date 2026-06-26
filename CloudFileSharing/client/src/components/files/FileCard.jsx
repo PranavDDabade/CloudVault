@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Star, Download, Trash2, Share2, Copy, Edit2,
@@ -230,4 +230,4 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
   );
 };
 
-export default FileCard;
+export default memo(FileCard);

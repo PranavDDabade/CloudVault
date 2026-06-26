@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import {
   Files, HardDrive, Share2, Clock, Upload, FolderPlus, Star, TrendingUp, Folder
@@ -14,8 +14,8 @@ import { StoragePieChart, UploadTrendChart } from '../components/dashboard/Stora
 import { SkeletonCard } from '../components/ui/index.jsx';
 import FileCard from '../components/files/FileCard';
 import FolderCard from '../components/files/FolderCard';
-import FilePreview from '../components/files/FilePreview';
-import ShareModal from '../components/sharing/ShareModal';
+const FilePreview = lazy(() => import('../components/files/FilePreview'));
+const ShareModal = lazy(() => import('../components/sharing/ShareModal'));
 import Modal from '../components/ui/Modal';
 import { formatBytes, formatDate } from '../utils/formatters';
 import toast from 'react-hot-toast';
@@ -94,6 +94,38 @@ const Dashboard = () => {
     ? Math.round((stats.storageUsed / stats.storageLimit) * 100)
     : 0;
 
+  const handleDeleteFolder = useCallback(async (id) => {
+    await folderService.deleteFolder(id);
+    setRecentFolders(prev => prev.filter(f => f._id !== id));
+  }, []);
+
+  const handleRenameFolder = useCallback((f) => {
+    setRenameItem({ ...f, isFolder: true });
+    setNewName(f.name);
+  }, []);
+
+  const handleToggleFavFolder = useCallback(async (id, isFavorite) => {
+    await folderService.updateFolder(id, { isFavorite });
+    setRecentFolders(prev => prev.map(f => f._id === id ? { ...f, isFavorite } : f));
+  }, []);
+
+  const handleOpenFolder = useCallback((id) => navigate('/dashboard/files'), [navigate]);
+
+  const handleToggleFavFile = useCallback(async (id) => {
+    const { data } = await fileService.toggleFavorite(id);
+    setRecentFiles(prev => prev.map(f => f._id === id ? { ...f, isFavorite: data.isFavorite } : f));
+  }, []);
+
+  const handleDeleteFile = useCallback(async (id) => {
+    await fileService.deleteFile(id);
+    setRecentFiles(prev => prev.filter(f => f._id !== id));
+  }, []);
+
+  const handleRenameFile = useCallback((f) => {
+    setRenameItem(f);
+    setNewName(f.name);
+  }, []);
+
   const STAT_CARDS = [
     {
       title: 'Total Files',
@@ -128,19 +160,14 @@ const Dashboard = () => {
   return (
     <div>
       {/* Page header */}
-      <motion.div
-        style={{ marginBottom: 'var(--gap-lg)' }}
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <div style={{ marginBottom: 'var(--gap-lg)' }}>
         <h1 className="text-page-title" style={{ marginBottom: '8px' }}>
           {getGreeting()}, {user?.name?.split(' ')[0]} 👋
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
           Here's what's happening with your cloud storage environment.
         </p>
-      </motion.div>
+      </div>
 
       {/* Stats grid */}
       <div style={{
@@ -236,19 +263,10 @@ const Dashboard = () => {
               <FolderCard
                 key={folder._id}
                 folder={folder}
-                onOpen={(id) => navigate('/dashboard/files')}
-                onDelete={async (id) => {
-                  await folderService.deleteFolder(id);
-                  setRecentFolders(prev => prev.filter(f => f._id !== id));
-                }}
-                onRename={(f) => {
-                  setRenameItem({ ...f, isFolder: true });
-                  setNewName(f.name);
-                }}
-                onToggleFavorite={async (id, isFavorite) => {
-                  await folderService.updateFolder(id, { isFavorite });
-                  setRecentFolders(prev => prev.map(f => f._id === id ? { ...f, isFavorite } : f));
-                }}
+                onOpen={handleOpenFolder}
+                onDelete={handleDeleteFolder}
+                onRename={handleRenameFolder}
+                onToggleFavorite={handleToggleFavFolder}
               />
             ))}
           </div>
@@ -275,18 +293,9 @@ const Dashboard = () => {
                 file={file}
                 onPreview={setPreviewFile}
                 onShare={setShareFile}
-                onToggleFavorite={async (id) => {
-                  const { data } = await fileService.toggleFavorite(id);
-                  setRecentFiles(prev => prev.map(f => f._id === id ? { ...f, isFavorite: data.isFavorite } : f));
-                }}
-                onDelete={async (id) => {
-                  await fileService.deleteFile(id);
-                  setRecentFiles(prev => prev.filter(f => f._id !== id));
-                }}
-                onRename={(f) => {
-                  setRenameItem(f);
-                  setNewName(f.name);
-                }}
+                onToggleFavorite={handleToggleFavFile}
+                onDelete={handleDeleteFile}
+                onRename={handleRenameFile}
               />
             ))}
           </div>
@@ -312,13 +321,21 @@ const Dashboard = () => {
       </Modal>
 
       {/* Modals */}
-      <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
-        onToggleFavorite={async (id) => {
-          const { data } = await fileService.toggleFavorite(id);
-          setRecentFiles(prev => prev.map(f => f._id === id ? { ...f, isFavorite: data.isFavorite } : f));
-        }}
-        onShare={setShareFile} />
-      <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+      {!!previewFile && (
+        <Suspense fallback={null}>
+          <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
+            onToggleFavorite={async (id) => {
+              const { data } = await fileService.toggleFavorite(id);
+              setRecentFiles(prev => prev.map(f => f._id === id ? { ...f, isFavorite: data.isFavorite } : f));
+            }}
+            onShare={setShareFile} />
+        </Suspense>
+      )}
+      {!!shareFile && (
+        <Suspense fallback={null}>
+          <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+        </Suspense>
+      )}
     </div>
   );
 };

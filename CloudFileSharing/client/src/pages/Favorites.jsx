@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, Upload } from 'lucide-react';
 import { useOutletContext } from 'react-router-dom';
 import FileCard from '../components/files/FileCard';
-import FilePreview from '../components/files/FilePreview';
+const FilePreview = lazy(() => import('../components/files/FilePreview'));
 import FolderCard from '../components/files/FolderCard';
-import MoveModal from '../components/files/MoveModal';
-import ShareModal from '../components/sharing/ShareModal';
+const MoveModal = lazy(() => import('../components/files/MoveModal'));
+const ShareModal = lazy(() => import('../components/sharing/ShareModal'));
 import Modal from '../components/ui/Modal';
 import { EmptyState, SkeletonCard } from '../components/ui/index.jsx';
 import { fileService } from '../services/fileService';
@@ -44,15 +44,15 @@ const Favorites = () => {
     load();
   }, []);
 
-  const handleToggleFavoriteFile = async (id) => {
+  const handleToggleFavoriteFile = useCallback(async (id) => {
     const { data } = await fileService.toggleFavorite(id);
     if (!data.isFavorite) {
       setFiles(prev => prev.filter(f => f._id !== id));
       toast.success('Removed from favorites');
     }
-  };
+  }, []);
 
-  const handleToggleFavoriteFolder = async (id, isFavorite) => {
+  const handleToggleFavoriteFolder = useCallback(async (id, isFavorite) => {
     try {
       await folderService.updateFolder(id, { isFavorite });
       setFolders(prev => prev.filter(f => f._id !== id));
@@ -60,19 +60,19 @@ const Favorites = () => {
     } catch {
       toast.error('Failed to update favorite');
     }
-  };
+  }, []);
 
-  const handleDeleteFile = async (id) => {
+  const handleDeleteFile = useCallback(async (id) => {
     await fileService.deleteFile(id);
     setFiles(prev => prev.filter(f => f._id !== id));
     toast.success('Moved to trash');
-  };
+  }, []);
 
-  const handleDeleteFolder = async (id) => {
+  const handleDeleteFolder = useCallback(async (id) => {
     await folderService.deleteFolder(id);
     setFolders(prev => prev.filter(f => f._id !== id));
     toast.success('Folder moved to trash');
-  };
+  }, []);
 
   const handleRenameSubmit = async () => {
     if (!newName.trim() || !renameItem) return;
@@ -92,7 +92,7 @@ const Favorites = () => {
     }
   };
 
-  const handleMoveItem = async (item, destFolderId) => {
+  const handleMoveItem = useCallback(async (item, destFolderId) => {
     if (item.isFolder) {
       await folderService.updateFolder(item._id, { parentId: destFolderId });
       setFolders(prev => prev.filter(f => f._id !== item._id));
@@ -100,13 +100,17 @@ const Favorites = () => {
       await fileService.updateFile(item._id, { folderId: destFolderId });
       setFiles(prev => prev.filter(f => f._id !== item._id));
     }
-  };
+  }, []);
+
+  const handleOpenFolder = useCallback((id) => toast.success('Open from files page to browse nested contents.'), []);
+  const handleRenameFolder = useCallback((f) => { setRenameItem({ ...f, isFolder: true }); setNewName(f.name); }, []);
+  const handleRenameFile = useCallback((f) => { setRenameItem(f); setNewName(f.name); }, []);
 
   const totalCount = files.length + folders.length;
 
   return (
     <div>
-      <motion.div style={{ marginBottom: 'var(--gap-lg)' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div style={{ marginBottom: 'var(--gap-lg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Star size={20} style={{ color: 'var(--warning)' }} fill="var(--warning)" />
@@ -116,7 +120,7 @@ const Favorites = () => {
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
           {totalCount} starred item{totalCount !== 1 ? 's' : ''}
         </p>
-      </motion.div>
+      </div>
 
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>
@@ -147,9 +151,9 @@ const Favorites = () => {
                   <FolderCard
                     key={folder._id}
                     folder={folder}
-                    onOpen={(id) => toast.success('Open from files page to browse nested contents.')}
+                    onOpen={handleOpenFolder}
                     onDelete={handleDeleteFolder}
-                    onRename={(f) => { setRenameItem({ ...f, isFolder: true }); setNewName(f.name); }}
+                    onRename={handleRenameFolder}
                     onMove={setMoveItem}
                     onToggleFavorite={handleToggleFavoriteFolder}
                   />
@@ -162,20 +166,18 @@ const Favorites = () => {
           {files.length > 0 && (
             <div>
               <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '16px' }}>Files</h2>
-              <motion.div layout style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>
-                <AnimatePresence>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>
                   {files.map(file => (
                     <FileCard key={file._id} file={file}
                       onPreview={setPreviewFile}
                       onShare={setShareFile}
                       onToggleFavorite={handleToggleFavoriteFile}
                       onDelete={handleDeleteFile}
-                      onRename={(f) => { setRenameItem(f); setNewName(f.name); }}
+                      onRename={handleRenameFile}
                       onMove={setMoveItem}
                     />
                   ))}
-                </AnimatePresence>
-              </motion.div>
+              </div>
             </div>
           )}
         </div>
@@ -200,16 +202,28 @@ const Favorites = () => {
       </Modal>
 
       {/* Move Destination Modal */}
-      <MoveModal
-        isOpen={!!moveItem}
-        onClose={() => setMoveItem(null)}
-        item={moveItem}
-        onMove={handleMoveItem}
-      />
+      {!!moveItem && (
+        <Suspense fallback={null}>
+          <MoveModal
+            isOpen={!!moveItem}
+            onClose={() => setMoveItem(null)}
+            item={moveItem}
+            onMove={handleMoveItem}
+          />
+        </Suspense>
+      )}
 
-      <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
-        onToggleFavorite={handleToggleFavoriteFile} onShare={setShareFile} />
-      <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+      {!!previewFile && (
+        <Suspense fallback={null}>
+          <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)}
+            onToggleFavorite={handleToggleFavoriteFile} onShare={setShareFile} />
+        </Suspense>
+      )}
+      {!!shareFile && (
+        <Suspense fallback={null}>
+          <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
+        </Suspense>
+      )}
     </div>
   );
 };

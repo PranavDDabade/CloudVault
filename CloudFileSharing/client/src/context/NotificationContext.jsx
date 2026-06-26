@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -30,40 +30,42 @@ export const NotificationProvider = ({ children }) => {
     }
   }, [isAuthenticated, fetchNotifications]);
 
-  const markAsRead = async (id) => {
+  const markAsRead = useCallback(async (id) => {
     try {
       await api.put(`/notifications/${id}/read`);
       setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, isRead: true } : n)));
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (_) {}
-  };
+  }, []);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await api.put('/notifications/read-all');
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     } catch (_) {}
-  };
+  }, []);
 
-  const clearAll = async () => {
+  const clearAll = useCallback(async () => {
     try {
       await api.delete('/notifications/clear-all');
       setNotifications([]);
       setUnreadCount(0);
     } catch (_) {}
-  };
+  }, []);
 
-  const addNotification = (notification) => {
+  const addNotification = useCallback((notification) => {
     setNotifications((prev) => [notification, ...prev]);
     setUnreadCount((prev) => prev + 1);
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    notifications, unreadCount, loading,
+    fetchNotifications, markAsRead, markAllAsRead, clearAll, addNotification
+  }), [notifications, unreadCount, loading, fetchNotifications, markAsRead, markAllAsRead, clearAll, addNotification]);
 
   return (
-    <NotificationContext.Provider value={{
-      notifications, unreadCount, loading,
-      fetchNotifications, markAsRead, markAllAsRead, clearAll, addNotification
-    }}>
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

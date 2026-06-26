@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { Share2, Link2, Download, Eye } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { shareService } from '../services/shareService';
 import { EmptyState, SkeletonRow } from '../components/ui/index.jsx';
-import FilePreview from '../components/files/FilePreview';
+const FilePreview = lazy(() => import('../components/files/FilePreview'));
 import { formatBytes, formatDate, formatShortDate } from '../utils/formatters';
 import { getFileIcon } from '../utils/fileIcons';
 import toast from 'react-hot-toast';
@@ -57,7 +57,7 @@ const SharedFiles = () => {
 
   return (
     <div>
-      <motion.div style={{ marginBottom: 'var(--gap-lg)' }} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+      <div style={{ marginBottom: 'var(--gap-lg)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
           <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(124,92,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Share2 size={20} style={{ color: 'var(--primary)' }} />
@@ -67,7 +67,7 @@ const SharedFiles = () => {
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
           {tab === 'mine' ? `${myShares.length} links shared by you` : `${sharedWithMe.length} links shared with you`}
         </p>
-      </motion.div>
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: 'var(--gap-lg)', width: 'fit-content' }}>
@@ -170,7 +170,11 @@ const SharedFiles = () => {
         </div>
       )}
 
-      <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)} />
+      {!!previewFile && (
+        <Suspense fallback={null}>
+          <FilePreview file={previewFile} isOpen={!!previewFile} onClose={() => setPreviewFile(null)} />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -58,7 +58,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
           type="text"
           placeholder="Search files, folders..."
           value={searchQuery || ''}
-          onChange={(e) => onSearchChange?.(e.target.value)}
+          onChange={(e) => startTransition(() => onSearchChange?.(e.target.value))}
           className="input search-pill"
           style={{
             paddingLeft: '44px', paddingRight: '40px', height: '44px',
@@ -67,7 +67,7 @@ const Navbar = ({ onMenuToggle, onUploadClick, searchQuery, onSearchChange }) =>
         />
         {searchQuery && (
           <button
-            onClick={() => onSearchChange?.('')}
+            onClick={() => startTransition(() => onSearchChange?.(''))}
             className="absolute right-3 top-1/2 -translate-y-1/2"
             style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}
           >

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/authService';
 import { setAuthToken } from '../services/api';
 import toast from 'react-hot-toast';
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     setUser((prev) => ({ ...prev, ...updatedUser }));
   }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     token,
     loading,
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-  };
+  }), [user, token, loading, login, register, logout, updateUser]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
