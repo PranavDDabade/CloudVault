@@ -172,8 +172,8 @@ startServer();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  console.error('Unhandled Promise Rejection:', err.message);
-  process.exit(1);
+  console.error('Unhandled Promise Rejection:', err?.stack || err?.message || err);
+  // process.exit(1); // Removed to prevent the server from crashing on background errors
 });
 
 module.exports = app;

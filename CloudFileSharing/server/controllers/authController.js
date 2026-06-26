@@ -35,7 +35,7 @@ exports.register = async (req, res, next) => {
       await user.save({ validateBeforeSave: false });
       console.log('[Register] User saved');
     } catch (saveErr) {
-      console.error('[Register] Error generating token or saving user:', saveErr.message);
+      console.error('[Register] Error generating token or saving user:', saveErr?.message || saveErr);
     }
 
     // 2. Send verification email (non-critical)
@@ -45,7 +45,7 @@ exports.register = async (req, res, next) => {
         console.log('[Register] Email sent');
       }
     } catch (emailErr) {
-      console.error('[Register] Failed to send verification email:', emailErr.message);
+      console.error('[Register] Failed to send verification email:', emailErr?.message || emailErr);
     }
 
     // 3. Log activity (non-critical)
@@ -60,7 +60,7 @@ exports.register = async (req, res, next) => {
       });
       console.log('[Register] Activity logged');
     } catch (logErr) {
-      console.error('[Register] Failed to log activity:', logErr.message);
+      console.error('[Register] Failed to log activity:', logErr?.message || logErr);
     }
 
     // 4. Create Notification (non-critical)
@@ -76,7 +76,7 @@ exports.register = async (req, res, next) => {
         console.log('[Register] Notification created');
       }
     } catch (notifErr) {
-      console.error('[Register] Failed to create notification:', notifErr.message);
+      console.error('[Register] Failed to create notification:', notifErr?.message || notifErr);
     }
 
     // 5. Send Response
@@ -86,7 +86,7 @@ exports.register = async (req, res, next) => {
       await sendTokenResponse(user, 201, res, 'Account created! Please check your email to verify your account.');
       console.log('[Register] Response sent');
     } catch (resErr) {
-      console.error('[Register] Error sending token response:', resErr.message);
+      console.error('[Register] Error sending token response:', resErr?.message || resErr);
       // Fallback response if JWT generation fails
       if (!res.headersSent) {
         res.status(201).json({ 
