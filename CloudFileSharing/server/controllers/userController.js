@@ -1,18 +1,26 @@
 const User = require('../models/User');
 const File = require('../models/File');
-const { uploadToS3, deleteFromS3 } = require('../services/s3Service');
+const { uploadToS3, deleteFromS3, getSignedDownloadUrl } = require('../services/s3Service');
 const { generateS3Key, logActivity } = require('../utils/helpers');
 
 // ── Get Profile ───────────────────────────────────────────────────────────────
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
     const fileCount = await File.countDocuments({ owner: req.user._id, isDeleted: false });
+    const userObj = user.toObject();
+    if (userObj.avatarKey) {
+      try {
+        userObj.avatar = await getSignedDownloadUrl(userObj.avatarKey, 86400);
+      } catch (_) {}
+    }
 
     res.status(200).json({
       success: true,
       user: {
-        ...user.toObject(),
+        ...userObj,
         fileCount,
         storageUsagePercent: user.storageUsagePercent,
       },
@@ -36,6 +44,13 @@ exports.updateProfile = async (req, res, next) => {
       runValidators: true,
     });
 
+    const userObj = user.toObject();
+    if (userObj.avatarKey) {
+      try {
+        userObj.avatar = await getSignedDownloadUrl(userObj.avatarKey, 86400);
+      } catch (_) {}
+    }
+
     await logActivity({
       user: req.user._id,
       action: 'profile_update',
@@ -44,7 +59,7 @@ exports.updateProfile = async (req, res, next) => {
       ip: req.ip,
     });
 
-    res.status(200).json({ success: true, message: 'Profile updated successfully.', user });
+    res.status(200).json({ success: true, message: 'Profile updated successfully.', user: userObj });
   } catch (error) {
     next(error);
   }
@@ -78,6 +93,9 @@ exports.uploadAvatar = async (req, res, next) => {
     user.avatarKey = key;
     await user.save({ validateBeforeSave: false });
 
+    // Generate signed URL for immediate use in client
+    const signedAvatarUrl = await getSignedDownloadUrl(key, 86400);
+
     await logActivity({
       user: req.user._id,
       action: 'avatar_update',
@@ -86,7 +104,7 @@ exports.uploadAvatar = async (req, res, next) => {
       ip: req.ip,
     });
 
-    res.status(200).json({ success: true, message: 'Avatar updated.', avatar: url });
+    res.status(200).json({ success: true, message: 'Avatar updated.', avatar: signedAvatarUrl });
   } catch (error) {
     next(error);
   }

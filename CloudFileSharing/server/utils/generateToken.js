@@ -21,7 +21,7 @@ const generateRefreshToken = (id) => {
 /**
  * Send token response with cookie
  */
-const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
+const sendTokenResponse = async (user, statusCode, res, message = 'Success') => {
   const token = generateToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
 
@@ -32,6 +32,13 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
   delete userObj.resetPasswordExpire;
   delete userObj.emailVerifyToken;
   delete userObj.emailVerifyExpire;
+
+  if (userObj.avatarKey) {
+    try {
+      const { getSignedDownloadUrl } = require('../services/s3Service');
+      userObj.avatar = await getSignedDownloadUrl(userObj.avatarKey, 86400); // 24 hours expiry
+    } catch (_) {}
+  }
 
   res.status(statusCode).json({
     success: true,

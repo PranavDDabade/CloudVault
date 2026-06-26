@@ -35,7 +35,7 @@ exports.register = async (req, res, next) => {
       userAgent: req.get('user-agent'),
     });
 
-    sendTokenResponse(user, 201, res, 'Account created! Please check your email to verify your account.');
+    await sendTokenResponse(user, 201, res, 'Account created! Please check your email to verify your account.');
   } catch (error) {
     next(error);
   }
@@ -69,7 +69,7 @@ exports.login = async (req, res, next) => {
       userAgent: req.get('user-agent'),
     });
 
-    sendTokenResponse(user, 200, res, 'Login successful.');
+    await sendTokenResponse(user, 200, res, 'Login successful.');
   } catch (error) {
     next(error);
   }
@@ -187,7 +187,7 @@ exports.resetPassword = async (req, res, next) => {
       ip: req.ip,
     });
 
-    sendTokenResponse(user, 200, res, 'Password reset successful.');
+    await sendTokenResponse(user, 200, res, 'Password reset successful.');
   } catch (error) {
     next(error);
   }
@@ -197,7 +197,16 @@ exports.resetPassword = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
-    res.status(200).json({ success: true, user });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
+
+    const userObj = user.toObject();
+    if (userObj.avatarKey) {
+      try {
+        const { getSignedDownloadUrl } = require('../services/s3Service');
+        userObj.avatar = await getSignedDownloadUrl(userObj.avatarKey, 86400);
+      } catch (_) {}
+    }
+    res.status(200).json({ success: true, user: userObj });
   } catch (error) {
     next(error);
   }
