@@ -25,27 +25,77 @@ exports.register = async (req, res, next) => {
     }
 
     const user = await User.create({ name, email, password });
+    console.log('[Register] User created');
 
-    // Generate and send verification email
-    const token = user.generateEmailVerifyToken();
-    await user.save({ validateBeforeSave: false });
-
+    // 1. Generate token and save
+    let token;
     try {
-      await sendVerificationEmail(user, token);
-    } catch (emailErr) {
-      console.error('Failed to send verification email:', emailErr.message);
+      token = user.generateEmailVerifyToken();
+      console.log('[Register] Verification token generated');
+      await user.save({ validateBeforeSave: false });
+      console.log('[Register] User saved');
+    } catch (saveErr) {
+      console.error('[Register] Error generating token or saving user:', saveErr.message);
     }
 
-    await logActivity({
-      user: user._id,
-      action: 'register',
-      resourceType: 'auth',
-      description: 'New account registered',
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-    });
+    // 2. Send verification email (non-critical)
+    try {
+      if (token) {
+        await sendVerificationEmail(user, token);
+        console.log('[Register] Email sent');
+      }
+    } catch (emailErr) {
+      console.error('[Register] Failed to send verification email:', emailErr.message);
+    }
 
-    await sendTokenResponse(user, 201, res, 'Account created! Please check your email to verify your account.');
+    // 3. Log activity (non-critical)
+    try {
+      await logActivity({
+        user: user._id,
+        action: 'register',
+        resourceType: 'auth',
+        description: 'New account registered',
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      console.log('[Register] Activity logged');
+    } catch (logErr) {
+      console.error('[Register] Failed to log activity:', logErr.message);
+    }
+
+    // 4. Create Notification (non-critical)
+    try {
+      const Notification = require('../models/Notification');
+      if (Notification) {
+        await Notification.create({
+          user: user._id,
+          title: 'Welcome to CloudVault!',
+          message: 'Thank you for registering. You have received 5GB of free storage.',
+          type: 'system',
+        });
+        console.log('[Register] Notification created');
+      }
+    } catch (notifErr) {
+      console.error('[Register] Failed to create notification:', notifErr.message);
+    }
+
+    // 5. Send Response
+    try {
+      console.log('[Register] JWT generated'); // sendTokenResponse generates JWT
+      console.log('[Register] Cookies created'); // sendTokenResponse can create cookies if configured
+      await sendTokenResponse(user, 201, res, 'Account created! Please check your email to verify your account.');
+      console.log('[Register] Response sent');
+    } catch (resErr) {
+      console.error('[Register] Error sending token response:', resErr.message);
+      // Fallback response if JWT generation fails
+      if (!res.headersSent) {
+        res.status(201).json({ 
+          success: true, 
+          message: 'Account created successfully, but there was an issue logging you in automatically. Please try logging in manually.',
+          user: { _id: user._id, name: user.name, email: user.email }
+        });
+      }
+    }
   } catch (error) {
     next(error);
   }
