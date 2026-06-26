@@ -4,6 +4,7 @@ import { HelmetProvider } from 'react-helmet-async';
 import { useAuth } from './context/AuthContext';
 import { PageLoader } from './components/ui/index.jsx';
 import DashboardLayout from './components/layout/DashboardLayout';
+const PublicShare = lazy(() => import('./pages/PublicShare'));
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────────
 const Landing         = lazy(() => import('./pages/Landing'));
@@ -55,12 +56,15 @@ function App() {
           <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
           <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
           <Route path="/reset-password/:token" element={<PublicRoute><ResetPassword /></PublicRoute>} />
+          <Route path="share/:token" element={<PublicShare />} />
+
+          <Route path="shared" element={<SharedFiles />} />
 
           {/* Protected dashboard routes */}
           <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="files" element={<MyFiles />} />
-            <Route path="shared" element={<SharedFiles />} />
+
             <Route path="favorites" element={<Favorites />} />
             <Route path="trash" element={<Trash />} />
             <Route path="analytics" element={<StorageAnalytics />} />
