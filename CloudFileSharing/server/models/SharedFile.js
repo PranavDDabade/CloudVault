@@ -31,12 +31,7 @@ const sharedFileSchema = new mongoose.Schema(
         acceptedAt: Date,
       },
     ],
-    // Public link
-    publicLink: {
-      type: String,
-      unique: true,
-      sparse: true,
-    },
+
     linkToken: {
       type: String,
       unique: true,
@@ -86,7 +81,7 @@ const sharedFileSchema = new mongoose.Schema(
     toJSON: { virtuals: true },
     toObject: { virtuals: true },
   }
-);
+);  
 
 // ── Virtual: is expired ───────────────────────────────────────────────────────
 sharedFileSchema.virtual('isExpired').get(function () {
@@ -94,12 +89,18 @@ sharedFileSchema.virtual('isExpired').get(function () {
   return new Date() > this.expiresAt;
 });
 
+// ── Virtual: public link ──────────────────────────────────────────────────────
+sharedFileSchema.virtual('publicLink').get(function () {
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  return `${clientUrl}/#/share/${this.linkToken}`;
+});
+
 // ── Pre-save: generate public link token ──────────────────────────────────────
 sharedFileSchema.pre('save', function (next) {
   if (!this.linkToken) {
     this.linkToken = crypto.randomBytes(20).toString('hex');
   }
-  this.publicLink = `${process.env.CLIENT_URL}/#/share/${this.linkToken}`;
+ 
   next();
 });
 

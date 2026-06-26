@@ -116,20 +116,7 @@ const connectDB = async () => {
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
-    // Migrate existing share links to HashRouter format
-    const SharedFile = require('./models/SharedFile');
-    const shares = await SharedFile.find({ publicLink: { $not: /#\/share/ } });
-    let updatedCount = 0;
-    for (const share of shares) {
-      if (share.linkToken) {
-        share.publicLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/#/share/${share.linkToken}`;
-        await share.save();
-        updatedCount++;
-      }
-    }
-    if (updatedCount > 0) {
-      console.log(`✅ Migrated ${updatedCount} old share links to HashRouter format.`);
-    }
+
 
     // Migrate existing files to set correct fileType
     const File = require('./models/File');
