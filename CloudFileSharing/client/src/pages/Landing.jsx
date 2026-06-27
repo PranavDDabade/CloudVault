@@ -47,6 +47,15 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
+  const scrollToSection = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      const y = element.getBoundingClientRect().top + window.scrollY - 72;
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  };
+
   return (
     <motion.nav
       initial={{ y: -20, opacity: 0 }}
@@ -81,10 +90,10 @@ const Navbar = () => {
 
       {/* Center navigation */}
       <div className="hidden md:flex items-center gap-8" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
-        <a href="#features" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Features</a>
-        <a href="#how-it-works" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">How It Works</a>
-        <a href="#pricing" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Pricing</a>
-        <a href="#faqs" style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">FAQ</a>
+        <a href="#features" onClick={(e) => scrollToSection(e, 'features')} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Features</a>
+        <a href="#how-it-works" onClick={(e) => scrollToSection(e, 'how-it-works')} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">How It Works</a>
+        <a href="#pricing" onClick={(e) => scrollToSection(e, 'pricing')} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">Pricing</a>
+        <a href="#faqs" onClick={(e) => scrollToSection(e, 'faqs')} style={{ color: 'var(--text-secondary)', textDecoration: 'none', fontWeight: 500, fontSize: '15px', transition: 'color 0.2s' }} className="hover-text-theme">FAQ</a>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

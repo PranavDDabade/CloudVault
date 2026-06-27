@@ -158,7 +158,11 @@ exports.createShare = async (req, res, next) => {
 // ── Get Share by Token (public access) ────────────────────────────────────────
 exports.getShareByToken = async (req, res, next) => {
   try {
+    // Prevent browser from caching API responses (especially 410 Gone which is cacheable by default)
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+
     const share = await SharedFile.findOne({ linkToken: req.params.token, isActive: true })
+      .select('+password')
       .populate('file', 'name mimeType size fileType extension key')
       .populate('sharedBy', 'name avatar');
 
@@ -174,6 +178,9 @@ exports.getShareByToken = async (req, res, next) => {
       if (!password) {
         return res.status(401).json({ success: false, message: 'This link is password protected.', requiresPassword: true });
       }
+      if (!share.password) {
+        return res.status(500).json({ success: false, message: 'Password hash is missing from this share link. Please ask the owner to update the share settings.' });
+      }
       const isMatch = await bcrypt.compare(password, share.password);
       if (!isMatch) return res.status(401).json({ success: false, message: 'Incorrect password.' });
     }
@@ -183,6 +190,7 @@ exports.getShareByToken = async (req, res, next) => {
     await share.save();
 
     const shareObj = share.toObject();
+    delete shareObj.password;
     if (shareObj.file) {
       shareObj.file.previewUrl = await getSignedDownloadUrl(shareObj.file.key, 3600);
     }
@@ -196,7 +204,9 @@ exports.getShareByToken = async (req, res, next) => {
 // ── Download via Share Link ────────────────────────────────────────────────────
 exports.downloadViaShare = async (req, res, next) => {
   try {
-    const share = await SharedFile.findOne({ linkToken: req.params.token, isActive: true }).populate('file');
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    
+    const share = await SharedFile.findOne({ linkToken: req.params.token, isActive: true }).select('+password').populate('file');
 
     if (!share || share.isExpired) {
       return res.status(404).json({ success: false, message: 'Share link not found or expired.' });
@@ -209,6 +219,9 @@ exports.downloadViaShare = async (req, res, next) => {
     if (share.hasPassword) {
       const { password } = req.body;
       if (!password) return res.status(401).json({ success: false, message: 'Password required.', requiresPassword: true });
+      if (!share.password) {
+        return res.status(500).json({ success: false, message: 'Password hash is missing from this share link. Please ask the owner to update the share settings.' });
+      }
       const isMatch = await bcrypt.compare(password, share.password);
       if (!isMatch) return res.status(401).json({ success: false, message: 'Incorrect password.' });
     }

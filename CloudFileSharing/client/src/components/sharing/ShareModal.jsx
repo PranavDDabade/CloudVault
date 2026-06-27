@@ -55,6 +55,10 @@ const ShareModal = ({ file, isOpen, onClose }) => {
 
   const createShare = async () => {
     if (!file) return;
+    if (config.hasExpiry && !config.expiresAt) {
+      toast.error('Please select an expiry date and time');
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -62,7 +66,7 @@ const ShareModal = ({ file, isOpen, onClose }) => {
         isPublic: config.isPublic,
         permissions: { canView: true, canDownload: config.canDownload, canEdit: config.canEdit },
         ...(config.hasPassword && config.password ? { password: config.password } : {}),
-        ...(config.hasExpiry && config.expiresAt ? { expiresAt: config.expiresAt } : {}),
+        ...(config.hasExpiry && config.expiresAt ? { expiresAt: new Date(config.expiresAt).toISOString() } : {}),
         ...(config.emails ? { emails: config.emails.split(',').map(e => e.trim()).filter(Boolean) } : {}),
       };
       
@@ -80,13 +84,17 @@ const ShareModal = ({ file, isOpen, onClose }) => {
 
   const updateShare = async () => {
     if (!share) return;
+    if (config.hasExpiry && !config.expiresAt) {
+      toast.error('Please select an expiry date and time');
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
         isPublic: config.isPublic,
         permissions: { canView: true, canDownload: config.canDownload, canEdit: config.canEdit },
         password: config.hasPassword ? (config.password || undefined) : null,
-        expiresAt: config.hasExpiry && config.expiresAt ? config.expiresAt : null,
+        expiresAt: config.hasExpiry && config.expiresAt ? new Date(config.expiresAt).toISOString() : null,
       };
       
       const { data } = await shareService.updateShare(share._id, payload);
@@ -100,8 +108,9 @@ const ShareModal = ({ file, isOpen, onClose }) => {
   };
 
   const copyLink = async () => {
-    if (!share?.publicLink) return;
-    await navigator.clipboard.writeText(share.publicLink);
+    const link = share?.publicLink || (share?.linkToken ? `${window.location.origin}/#/share/${share.linkToken}` : '');
+    if (!link) return;
+    await navigator.clipboard.writeText(link);
     setCopied(true);
     toast.success('Link copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
@@ -127,7 +136,9 @@ const ShareModal = ({ file, isOpen, onClose }) => {
       hasPassword: share.hasPassword || false,
       password: '',
       hasExpiry: !!share.expiresAt,
-      expiresAt: share.expiresAt ? new Date(share.expiresAt).toISOString().slice(0, 16) : '',
+      expiresAt: share.expiresAt 
+        ? new Date(new Date(share.expiresAt).getTime() - new Date(share.expiresAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) 
+        : '',
       emails: '',
     });
     setEditMode(true);
@@ -261,7 +272,7 @@ const ShareModal = ({ file, isOpen, onClose }) => {
               </div>
               
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input readOnly value={share.publicLink || ''} className="input" style={{ fontSize: '12px', height: '36px', flex: 1 }} />
+                <input readOnly value={share.publicLink || (share.linkToken ? `${window.location.origin}/#/share/${share.linkToken}` : '')} className="input" style={{ fontSize: '12px', height: '36px', flex: 1 }} />
                 <button onClick={copyLink} className="btn btn-primary btn-sm" style={{ flexShrink: 0 }}>
                   {copied ? <Check size={14} /> : <Copy size={14} />}
                 </button>

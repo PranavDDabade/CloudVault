@@ -13,6 +13,7 @@ const notificationSchema = new mongoose.Schema(
         'upload_success',
         'upload_failed',
         'file_shared',
+        'folder_shared',
         'file_deleted',
         'file_restored',
         'storage_warning',

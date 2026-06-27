@@ -49,6 +49,7 @@ exports.uploadFiles = async (req, res, next) => {
         url,
         key,
         owner: req.user._id,
+        uploaderName: user.name,
         folder: folderId || null,
       });
 
@@ -111,7 +112,11 @@ exports.getFiles = async (req, res, next) => {
     if (tags) query.tags = { $in: tags.split(',') };
 
     if (search) {
-      query.$text = { $search: search };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { originalName: { $regex: search, $options: 'i' } },
+        { tags: { $regex: search, $options: 'i' } }
+      ];
     }
 
     const { skip, limit: limitNum } = paginate(query, page, limit);
@@ -157,9 +162,9 @@ exports.getFile = async (req, res, next) => {
       if (!share) return res.status(404).json({ success: false, message: 'File not found.' });
     }
 
-    
-    file.viewCount += 1;
-    await file.save();
+    // Increment viewCount without changing the updatedAt timestamp
+    await File.updateOne({ _id: file._id }, { $inc: { viewCount: 1 } }, { timestamps: false });
+    file.viewCount += 1; // Update local object for the response
 
     const fileObj = file.toObject();
     fileObj.previewUrl = await getSignedDownloadUrl(file.key, 3600);
@@ -228,8 +233,8 @@ exports.downloadFile = async (req, res, next) => {
       file.originalName || file.name
     );
 
+    await File.updateOne({ _id: file._id }, { $inc: { downloadCount: 1 } }, { timestamps: false });
     file.downloadCount += 1;
-    await file.save();
 
     await logActivity({
       user: req.user._id,
@@ -429,6 +434,7 @@ exports.duplicateFile = async (req, res, next) => {
       url,
       key: newKey,
       owner: req.user._id,
+      uploaderName: user.name,
       folder: file.folder,
     });
 

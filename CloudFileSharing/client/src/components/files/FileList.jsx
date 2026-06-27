@@ -12,8 +12,8 @@ import toast from 'react-hot-toast';
 
 const FileList = ({
   files, onDelete, onToggleFavorite, onRename,
-  onShare, onPreview, onDuplicate, onMove,
-  selectedIds = [], onSelect
+  selectedIds = [], onSelect,
+  highlightedFileId, onShare, onPreview, onDuplicate, onMove
 }) => {
   const [menuFile, setMenuFile] = useState(null);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
@@ -51,7 +51,7 @@ const FileList = ({
     <div style={{ background: 'var(--surface)', borderRadius: '16px', border: '1px solid var(--border)', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{
-        display: 'grid', gridTemplateColumns: '40px 1fr 100px 100px 80px 40px',
+        display: 'grid', gridTemplateColumns: '40px 1fr 100px 100px 80px 130px',
         gap: '12px', padding: '10px 16px', alignItems: 'center',
         borderBottom: '1px solid var(--border)',
         fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)',
@@ -70,6 +70,7 @@ const FileList = ({
         {files.map((file, idx) => {
           const fileIcon = getFileIcon(file);
           const isSelected = selectedIds.includes(file._id);
+          const isHighlighted = highlightedFileId === file._id;
           const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File;
 
           return (
@@ -88,12 +89,15 @@ const FileList = ({
               }}
               style={{
                 display: 'grid',
-                gridTemplateColumns: '40px 1fr 100px 100px 80px 40px',
+                gridTemplateColumns: '40px 1fr 100px 100px 80px 130px',
                 gap: '12px', padding: '10px 16px', alignItems: 'center',
                 borderBottom: '1px solid var(--border)',
-                cursor: 'pointer', transition: 'background 0.15s',
-                background: isSelected ? 'rgba(79,70,229,0.08)' : 'transparent',
+                cursor: 'pointer', transition: 'background 0.15s, box-shadow 0.2s',
+                background: isSelected ? 'rgba(79,70,229,0.08)' : (isHighlighted ? 'rgba(124, 92, 255, 0.05)' : 'transparent'),
+                boxShadow: isHighlighted ? 'inset 2px 0 0 var(--primary)' : 'none',
+                userSelect: 'none',
               }}
+              data-file-id={file._id}
               className="hover-row"
             >
               {/* Icon */}
@@ -134,17 +138,53 @@ const FileList = ({
               </div>
 
               {/* Actions */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  positionMenu(e.clientX, e.clientY);
-                  setMenuFile(file);
-                }}
-                className="btn btn-ghost btn-sm"
-                style={{ padding: '4px' }}
-              >
-                <MoreVertical size={14} />
-              </button>
+              <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite?.(file._id);
+                  }}
+                  className="btn btn-ghost btn-sm hover-show"
+                  style={{ padding: '4px', opacity: file.isFavorite ? 1 : 0.6 }}
+                  title={file.isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+                >
+                  <Star size={14} style={{ color: file.isFavorite ? '#FCD34D' : 'inherit' }} fill={file.isFavorite ? '#FCD34D' : 'none'} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onShare?.(file);
+                  }}
+                  className="btn btn-ghost btn-sm hover-show"
+                  style={{ padding: '4px', opacity: 0.6 }}
+                  title="Share"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDownload(file);
+                  }}
+                  className="btn btn-ghost btn-sm hover-show"
+                  style={{ padding: '4px', opacity: 0.6 }}
+                  title="Download"
+                >
+                  <Download size={14} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    positionMenu(e.clientX, e.clientY);
+                    setMenuFile(file);
+                  }}
+                  className="btn btn-ghost btn-sm"
+                  style={{ padding: '4px', opacity: 0.6 }}
+                  title="More actions"
+                >
+                  <MoreVertical size={14} />
+                </button>
+              </div>
             </motion.div>
           );
         })}

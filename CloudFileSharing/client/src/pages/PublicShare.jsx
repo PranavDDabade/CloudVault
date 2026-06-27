@@ -15,9 +15,9 @@ function PublicShare() {
   const [password, setPassword] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [requiresPassword, setRequiresPassword] = useState(false);
-  const [fileUrl, setFileUrl] = useState(null);
   const [error, setError] = useState(null);
   const [zoom, setZoom] = useState(1);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const fetchShareDetails = async (passVal = null) => {
     setLoading(true);
@@ -27,16 +27,13 @@ function PublicShare() {
       const shareData = response.data.share;
       setShare(shareData);
       setRequiresPassword(false);
-
-      // Now fetch download URL for preview/download
-      const dlResponse = await shareService.downloadViaShare(token, passVal);
-      setFileUrl(dlResponse.data.downloadUrl);
     } catch (err) {
       const status = err.response?.status;
       const message = err.response?.data?.message || err.message || 'Failed to load share link';
       
-      if (status === 401 && err.response?.data?.requiresPassword) {
+      if (status === 401) {
         setRequiresPassword(true);
+        if (passVal) throw err; // throw to let handlePasswordSubmit catch it
       } else {
         setError(message);
       }
@@ -49,6 +46,30 @@ function PublicShare() {
     fetchShareDetails();
   }, [token]);
 
+  // Polling to ensure password hasn't been changed while viewing
+  useEffect(() => {
+    if (!share || (requiresPassword && !password)) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        await shareService.getShareByToken(token, password || null);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          setShare(null);
+          setPassword('');
+          setRequiresPassword(true);
+          toast.error('The password for this file has been changed or added. Please re-enter.');
+        } else if (err.response?.status === 410 || err.response?.status === 404) {
+          setShare(null);
+          setRequiresPassword(false);
+          setError(err.response?.data?.message || 'This share link is no longer available.');
+        }
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [share, token, password, requiresPassword]);
+
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!password) {
@@ -59,19 +80,30 @@ function PublicShare() {
     try {
       await fetchShareDetails(password);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Incorrect password');
+      toast.error(err.response?.data?.message || err.message || 'Incorrect password');
+      setPassword('');
     } finally {
       setVerifying(false);
     }
   };
 
-  const handleDownload = () => {
-    if (!fileUrl || !share?.file) return;
-    const a = document.createElement('a');
-    a.href = fileUrl;
-    a.download = share.file.name;
-    a.click();
-    toast.success('Download started!');
+  const handleDownload = async () => {
+    if (!share?.file) return;
+    setIsDownloading(true);
+    try {
+      // Pass the password to the download endpoint if it exists
+      const dlResponse = await shareService.downloadViaShare(token, password || null);
+      const downloadUrl = dlResponse.data.downloadUrl;
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = share.file.name;
+      a.click();
+      toast.success('Download started!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to download file');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (loading && !share && !requiresPassword) {
@@ -135,7 +167,7 @@ function PublicShare() {
   const isVideo = file.mimeType?.startsWith('video/');
   const isAudio = file.mimeType?.startsWith('audio/');
   const isPdf = file.mimeType === 'application/pdf';
-  const canPreview = (isImage || isVideo || isAudio || isPdf) && fileUrl;
+  const canPreview = (isImage || isVideo || isAudio || isPdf) && file.previewUrl;
 
   const fileIcon = getFileIcon(file);
   const LIcon = LucideIcons[fileIcon.icon.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('')] || LucideIcons.File;
@@ -148,8 +180,8 @@ function PublicShare() {
           <Cloud size={24} style={{ color: 'var(--primary)' }} />
           <span style={{ fontSize: '18px', fontWeight: 800, background: 'linear-gradient(135deg, #7C5CFF, #5EEAD4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CloudVault</span>
         </div>
-        <button onClick={handleDownload} className="btn btn-primary btn-sm">
-          <Download size={14} style={{ marginRight: '6px' }} /> Download File
+        <button onClick={handleDownload} disabled={isDownloading} className="btn btn-primary btn-sm">
+          <Download size={14} style={{ marginRight: '6px' }} /> {isDownloading ? 'Starting...' : 'Download File'}
         </button>
       </header>
 
@@ -170,12 +202,12 @@ function PublicShare() {
                       <ZoomOut size={16} />
                     </button>
                   </div>
-                  <img src={fileUrl} alt={file.name} style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', transform: `scale(${zoom})`, transition: 'transform 0.2s' }} />
+                  <img src={file.previewUrl} alt={file.name} style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain', transform: `scale(${zoom})`, transition: 'transform 0.2s' }} />
                 </>
               )}
               {isVideo && (
                 <video controls style={{ maxWidth: '90%', maxHeight: '80vh', borderRadius: '12px' }}>
-                  <source src={fileUrl} type={file.mimeType} />
+                  <source src={file.previewUrl} type={file.mimeType} />
                 </video>
               )}
               {isAudio && (
@@ -183,11 +215,11 @@ function PublicShare() {
                   <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎵</div>
                   <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text)', marginBottom: '8px' }}>{file.name}</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>{formatBytes(file.size)}</p>
-                  <audio controls src={fileUrl} style={{ width: '100%' }} />
+                  <audio controls src={file.previewUrl} style={{ width: '100%' }} />
                 </div>
               )}
               {isPdf && (
-                <iframe src={fileUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={file.name} />
+                <iframe src={file.previewUrl} style={{ width: '100%', height: '100%', border: 'none' }} title={file.name} />
               )}
             </div>
           ) : (
@@ -200,8 +232,8 @@ function PublicShare() {
                 <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: '32px' }}>
                   {formatBytes(file.size)} · Preview not available for this file type
                 </p>
-                <button className="btn btn-primary" onClick={handleDownload} style={{ padding: '14px 32px', fontSize: '15px' }}>
-                  <Download size={16} style={{ marginRight: '8px' }} /> Download File
+                <button className="btn btn-primary" onClick={handleDownload} disabled={isDownloading} style={{ padding: '14px 32px', fontSize: '15px' }}>
+                  <Download size={16} style={{ marginRight: '8px' }} /> {isDownloading ? 'Starting...' : 'Download File'}
                 </button>
               </div>
             </div>
@@ -248,8 +280,8 @@ function PublicShare() {
               </div>
 
               <div style={{ marginTop: '32px' }}>
-                <button className="btn btn-secondary" onClick={handleDownload} style={{ width: '100%', justifyContent: 'center', height: '44px' }}>
-                  <Download size={15} style={{ marginRight: '6px' }} /> Download File
+                <button className="btn btn-secondary" onClick={handleDownload} disabled={isDownloading} style={{ width: '100%', justifyContent: 'center', height: '44px' }}>
+                  <Download size={15} style={{ marginRight: '6px' }} /> {isDownloading ? 'Starting...' : 'Download File'}
                 </button>
               </div>
             </div>

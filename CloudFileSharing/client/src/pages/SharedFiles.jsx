@@ -36,8 +36,10 @@ const SharedFiles = () => {
   }, []);
 
   const copyLink = async (share) => {
-    if (!share.publicLink) return;
-    await navigator.clipboard.writeText(share.publicLink);
+    const link = share.publicLink || `${window.location.origin}/#/share/${share.linkToken}`;
+    if (!link || !share.linkToken) return;
+    
+    await navigator.clipboard.writeText(link);
     setCopiedId(share._id);
     toast.success('Link copied!');
     setTimeout(() => setCopiedId(null), 2000);
@@ -118,6 +120,14 @@ const SharedFiles = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: idx * 0.04 }}
                 className="table-row"
+                style={{ cursor: 'pointer', userSelect: 'none' }}
+                onDoubleClick={() => {
+                  if (isFolder) {
+                    window.open(`/#/share/${share.token}`, '_blank');
+                  } else {
+                    window.open(`/#/share/${share.token}`, '_blank');
+                  }
+                }}
               >
                 <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: fileIcon.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <LIcon size={20} style={{ color: fileIcon.color }} />

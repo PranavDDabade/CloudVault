@@ -44,6 +44,7 @@ const FolderCard = ({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          userSelect: 'none',
         }}
         onContextMenu={handleContextMenu}
         onDoubleClick={() => onOpen?.(folder._id)}

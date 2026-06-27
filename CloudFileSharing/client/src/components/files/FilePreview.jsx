@@ -17,8 +17,15 @@ const FilePreview = ({ file, isOpen, onClose, onToggleFavorite, onShare }) => {
     setZoom(1);
     setDownloadUrl(null);
 
-    // Track view count in the backend (ignore on public share pages to avoid 401s)
+    // Prevent React 18 Strict Mode from double-firing the view count API
     if (file._id && !window.location.href.includes('/share/')) {
+      const now = Date.now();
+      if (window.__lastViewedFileId === file._id && (now - window.__lastViewedTime < 2000)) {
+        return; // Skip if we just viewed this file in the last 2 seconds
+      }
+      window.__lastViewedFileId = file._id;
+      window.__lastViewedTime = now;
+
       fileService.getFile(file._id).catch(() => {});
     }
   }, [file, isOpen]);

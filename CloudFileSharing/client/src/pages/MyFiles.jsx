@@ -12,6 +12,7 @@ const MoveModal = lazy(() => import('../components/files/MoveModal'));
 const ShareModal = lazy(() => import('../components/sharing/ShareModal'));
 import Modal from '../components/ui/Modal';
 import { EmptyState, SkeletonCard } from '../components/ui/index.jsx';
+const SharedWithMeTab = lazy(() => import('../components/files/SharedWithMeTab'));
 import { fileService } from '../services/fileService';
 import { folderService } from '../services/folderService';
 import { FILE_TYPE_FILTERS } from '../utils/fileIcons';
@@ -32,9 +33,11 @@ const MyFiles = () => {
   const location = useLocation();
 
   const [viewMode, setViewMode] = useState('grid');
+  const [activeTab, setActiveTab] = useState('my-files');
   const [selectedIds, setSelectedIds] = useState([]);
   const [previewFile, setPreviewFile] = useState(null);
   const [shareFile, setShareFile] = useState(null);
+  const [highlightedFileId, setHighlightedFileId] = useState(null);
   
   // Refactored renameItem state to handle both files and folders
   const [renameItem, setRenameItem] = useState(null);
@@ -57,7 +60,26 @@ const MyFiles = () => {
       // Clear location state to prevent re-opening on page reload
       window.history.replaceState({}, document.title);
     }
+    if (location.state?.previewFile) {
+      setPreviewFile(location.state.previewFile);
+      setHighlightedFileId(location.state.previewFile._id);
+      window.history.replaceState({}, document.title);
+    }
   }, [location]);
+
+  useEffect(() => {
+    if (!highlightedFileId) return;
+    const handler = (e) => {
+      if (e.target.closest('.modal-content') || e.target.closest('.file-preview-overlay')) return;
+      if (e.target.closest(`[data-file-id="${highlightedFileId}"]`)) return;
+      setHighlightedFileId(null);
+    };
+    const timer = setTimeout(() => document.addEventListener('click', handler), 100);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handler);
+    };
+  }, [highlightedFileId]);
 
   const [filterType, setFilterType] = useState('');
   const [sort, setSort] = useState('-createdAt');
@@ -235,8 +257,20 @@ const MyFiles = () => {
         </div>
       </div>
 
-      {/* Breadcrumbs Navigation */}
-      <div style={{
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-elevated)', padding: '4px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: 'var(--gap-lg)', width: 'fit-content' }}>
+        <button onClick={() => setActiveTab('my-files')} style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: activeTab === 'my-files' ? 'var(--surface)' : 'transparent', color: activeTab === 'my-files' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>My Files</button>
+        <button onClick={() => setActiveTab('shared-with-me')} style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none', background: activeTab === 'shared-with-me' ? 'var(--surface)' : 'transparent', color: activeTab === 'shared-with-me' ? 'var(--text-primary)' : 'var(--text-secondary)' }}>Shared with me</button>
+      </div>
+
+      {activeTab === 'shared-with-me' ? (
+        <Suspense fallback={<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 'var(--gap-grid)' }}>{[...Array(8)].map((_, i) => <SkeletonCard key={i} />)}</div>}>
+          <SharedWithMeTab />
+        </Suspense>
+      ) : (
+        <>
+          {/* Breadcrumbs Navigation */}
+          <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '6px',
@@ -398,6 +432,7 @@ const MyFiles = () => {
                       onRename={handleRenameFile}
                       onDuplicate={handleDuplicate}
                       onMove={setMoveItem}
+                      highlighted={highlightedFileId === file._id}
                     />
                   ))}
                 </div>
@@ -414,6 +449,7 @@ const MyFiles = () => {
                     onRename={handleRenameFile}
                     onDuplicate={handleDuplicate}
                     onMove={setMoveItem}
+                    highlightedFileId={highlightedFileId}
                   />
                 </div>
               )}
@@ -481,6 +517,8 @@ const MyFiles = () => {
         <Suspense fallback={null}>
           <ShareModal file={shareFile} isOpen={!!shareFile} onClose={() => setShareFile(null)} />
         </Suspense>
+      )}
+      </>
       )}
     </div>
   );

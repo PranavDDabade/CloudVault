@@ -10,7 +10,7 @@ import { getFileIcon } from '../../utils/fileIcons';
 import { fileService } from '../../services/fileService';
 import toast from 'react-hot-toast';
 
-const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPreview, onDuplicate, onMove, selected, onSelect }) => {
+const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPreview, onDuplicate, onMove, selected, onSelect, highlighted }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
 
@@ -59,6 +59,8 @@ const FileCard = ({ file, onDelete, onToggleFavorite, onRename, onShare, onPrevi
     <>
       <motion.div
         className={`file-card ${selected ? 'card-selected' : ''}`}
+        data-file-id={file._id}
+        style={{ userSelect: 'none', ...(highlighted ? { boxShadow: '0 0 0 2px var(--primary), 0 4px 20px rgba(124, 92, 255, 0.4)' } : {}) }}
         onContextMenu={handleContextMenu}
         onClick={() => onSelect?.(file._id)}
         onDoubleClick={() => onPreview?.(file)}

@@ -46,6 +46,9 @@ const fileSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    uploaderName: {
+      type: String,
+    },
     folder: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Folder',
